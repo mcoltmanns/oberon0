@@ -18,9 +18,10 @@ int main(const int argc, const char *argv[]) {
     auto scanner = std::make_unique<Scanner>(filename, logger.get());
     auto token = scanner->next();
     while (token->type() != TokenType::eof) {
-        token = scanner->next();
         std::cout << token.operator*() << std::endl;
+        token = scanner->next();
     }
+    std::cout << token.operator*() << std::endl;
     logger->info(filename, "Scanning complete.");
     exit(0);
 }
