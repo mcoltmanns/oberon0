@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.21)
 set(OBERON0_C "oberon0c")
 project(${OBERON0_C})
 
-
 if (MSVC)
     # warning level 4
     add_compile_options(/Wall /W4 /w44265 /w44061 /w44062 /experimental:external /external:W0 /external:anglebrackets)
@@ -17,8 +16,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(Boost_USE_MULTITHREADED TRUE)
-
-set(OBERON0_C "oberon0c")
 
 set(UTIL_SOURCES
         util/Logger.cpp util/Logger.h)
