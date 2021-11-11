@@ -17,8 +17,7 @@ specification as described in the latest version of the [Oberon Language Report]
 In addition to these "official" extensions, other features were added to the supported dialect of the Oberon programming language.
 These feature were either inspired by convenience, such as interfacing with standard libraries, or by the compiler 
 author's nostalgia of learning [Turbo Pascal](https://en.wikipedia.org/wiki/Turbo_Pascal) 6.0 as his first programming 
-language at high school. A description of the currently supported Oberon dialect in terms of syntax and semantics (of
-unofficial features) can be found in the Wiki section of this project repository.
+language at high school.
 
 ## Dependencies and Toolchains
 
@@ -34,9 +33,6 @@ As of December 2020, the following configurations are tested and known to work.
 |CMake | 3.19.1                      | 3.19.2                       | 3.19.2                       |
 |IDE   | CLion 2020.3                | Visual Studio 2019 Community | CLion 2020.3                 |
 |CXX   | Apple Clang 12.0.0.12000032 | Microsoft CL 19.24.28316     | GCC 9.3.0                    |
- 
-Detailed instruction on how to build the Oberon compiler and its dependencies can be found in the Wiki section of this
-project repository.
 
 ## Installing Boost
 
