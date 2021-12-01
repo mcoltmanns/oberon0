@@ -5,7 +5,7 @@ MODULE BubbleSort;
 CONST Dim = 2 * 10;
 
 (* Array type *)
-TYPE INTARRAY: ARRAY Dim OF INTEGER;
+TYPE INTARRAY = ARRAY Dim OF INTEGER;
 
 (* Array to be sorted. *)
 VAR a: INTARRAY;
