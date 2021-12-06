@@ -2,13 +2,18 @@ cmake_minimum_required(VERSION 3.21)
 set(OBERON0_C "oberon0c")
 project(${OBERON0_C})
 
-if (MSVC)
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     # warning level 4
     add_compile_options(/Wall /W4 /w44265 /w44061 /w44062 /experimental:external /external:W0 /external:anglebrackets)
 else()
     # lots of warnings and all warnings as errors -Wglobal-constructors -Wexit-time-destructors
-    # gcc does not support -Wweak-vtables
-    add_compile_options(-W -Wall -Wextra -Werror -Wpedantic -Wunreachable-code -Wshadow -Woverloaded-virtual -Winvalid-pch -Wcast-align -Wformat=2 -Wformat-nonliteral -Wmissing-declarations -Wmissing-noreturn -Wmissing-format-attribute -Wmissing-include-dirs -Wredundant-decls -Wswitch-default -Wsign-conversion -Wweak-vtables)
+    add_compile_options(-W -Wall -Wextra -Werror -Wpedantic -Wunreachable-code -Wshadow -Woverloaded-virtual -Winvalid-pch -Wcast-align -Wformat=2 -Wformat-nonliteral -Wmissing-declarations -Wmissing-noreturn -Wmissing-format-attribute -Wmissing-include-dirs -Wredundant-decls -Wswitch-default -Wsign-conversion)
+
+    if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+        # gcc does not support -Wweak-vtables
+        add_compile_options(-Wweak-vtables)
+    endif()
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
