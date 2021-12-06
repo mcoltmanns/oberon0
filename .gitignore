@@ -30,6 +30,7 @@
 # CMake
 /cmake-build-debug/
 /CMakeFiles/
+build
 
 # Visual Studio
 /.vs/
@@ -37,6 +38,9 @@
 /out/
 *.pdb
 *.ilk
+
+# Visual Studio Code
+.vscode
 
 # LLVM
 *.bc
