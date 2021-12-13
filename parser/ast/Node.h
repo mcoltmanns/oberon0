@@ -11,11 +11,14 @@
 #include <list>
 #include <string>
 #include <ostream>
+#include <utility>
 #include "../../util/Logger.h"
 
 enum class NodeType : char {
     module
 };
+
+class NodeVisitor;
 
 class Node {
 
@@ -24,11 +27,13 @@ private:
     FilePos pos_;
 
 public:
-    explicit Node(NodeType nodeType, FilePos pos);
-    virtual ~Node() = 0;
+    explicit Node(const NodeType nodeType, FilePos pos) : nodeType_(nodeType), pos_(std::move(pos)) { };
+    virtual ~Node();
 
-    const NodeType getNodeType() const;
-    const FilePos getFilePos() const;
+    [[nodiscard]] NodeType getNodeType() const;
+    [[nodiscard]] FilePos pos() const;
+
+    virtual void accept(NodeVisitor &visitor) = 0;
 
     virtual void print(std::ostream &stream) const = 0;
     friend std::ostream& operator<<(std::ostream &stream, const Node &node);
