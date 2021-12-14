@@ -9,16 +9,16 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 else()
     # lots of warnings and all warnings as errors -Wglobal-constructors -Wexit-time-destructors
     add_compile_options(-W -Wall -Wextra -Werror -Wpedantic -Wunreachable-code -Wshadow -Woverloaded-virtual -Winvalid-pch -Wcast-align -Wformat=2 -Wformat-nonliteral -Wmissing-declarations -Wmissing-noreturn -Wmissing-format-attribute -Wmissing-include-dirs -Wredundant-decls -Wswitch-default -Wsign-conversion)
-
-    if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
-        # gcc does not support -Wweak-vtables
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         add_compile_options(-Wweak-vtables)
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # using GCC
     endif()
 endif()
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED OFF)
+set(CMAKE_CXX_EXTENSIONS ON)
 
 set(Boost_USE_MULTITHREADED TRUE)
 
