@@ -1,23 +1,23 @@
 # A Compiler for the Oberon-0 Programming Language
 
 The [Oberon](https://www.ethoberon.ethz.ch) programming language was proposed in 1987 by 
-[Niklaus Wirth](https://people.inf.ethz.ch/wirth/) as a successor to Pascal and Modula-2. Due to this lineage, Oberon 
-is an ALGOL-like language with strong (static and dynamic) typing discipline. The programming paradigm of Oberon can 
-be classified as imperative, structured, modular, and object-oriented.
+[Niklaus Wirth](https://people.inf.ethz.ch/wirth/) as a successor to Pascal and Modula-2. 
+Due to this lineage, Oberon is an ALGOL-like language with strong (static and dynamic) 
+typing discipline. The programming paradigm of Oberon can be classified as imperative, 
+structured, modular, and object-oriented.
 
 ## About
 
-This project implements a compiler for the Oberon programming language as a frontend to the [LLVM](http://llvm.org)
-Compiler Infrastructure. It is written in C++ and originated as project accompanying the MSc course "Compiler 
-Construction" taught at the [University of Konstanz](https://uni.kn). As a consequence, this compiler originally only
-targeted the Oberon-0 subset of the language, as described in Niklaus Wirth's book 
-["Compiler Construction"](http://www.ethoberon.ethz.ch/WirthPubl/CBEAll.pdf) (Chapter 6, pp. 30-32). Since then, the
-supported subset of the Oberon has been continuously extended with the goal to eventually cover the full language 
-specification as described in the latest version of the [Oberon Language Report](https://inf.ethz.ch/personal/wirth/Oberon/Oberon07.Report.pdf).
-In addition to these "official" extensions, other features were added to the supported dialect of the Oberon programming language.
-These feature were either inspired by convenience, such as interfacing with standard libraries, or by the compiler 
-author's nostalgia of learning [Turbo Pascal](https://en.wikipedia.org/wiki/Turbo_Pascal) 6.0 as his first programming 
-language at high school.
+This project provides the skeleton of a compiler for the Oberon-0 programming language, a 
+subset of the full Oberon programming language, as described in Niklaus Wirth's book 
+["Compiler Construction"](http://www.ethoberon.ethz.ch/WirthPubl/CBEAll.pdf) (Chapter 6, 
+pp. 30-32). The sekelton is written in C++ and serves as the starting point of the 
+programming project that accompanies the the MSc course "Compiler Construction" taught at 
+the [University of Konstanz](https://uni.kn). The goal of this project is for students to 
+design and develop a parser and intermediate representation for the Oberon-0 programming 
+language. In order to generate executable code, they will transform their high-level 
+intermediate representation into the low-level intermediate representation of the 
+[LLVM](http://llvm.org) Compiler Infrastructure. 
 
 ## Dependencies and Toolchains
 
@@ -28,11 +28,11 @@ As of December 2020, the following configurations are tested and known to work.
 
 |      | macOS                       | Windows 10 (x64)             | Linux (Ubuntu 20.04.1 LTS)   |
 |------|-----------------------------|------------------------------|------------------------------|
-|Boost | 1.74.0                      | 1.74.0                       | 1.71.0                       |
-|LLVM  | 11.0.0                      | 11.0.0                       | 11.0.0                       |
-|CMake | 3.19.1                      | 3.19.2                       | 3.19.2                       |
-|IDE   | CLion 2020.3                | Visual Studio 2019 Community | CLion 2020.3                 |
-|CXX   | Apple Clang 12.0.0.12000032 | Microsoft CL 19.24.28316     | GCC 9.3.0                    |
+|Boost | 1.74.0                      | 1.74.0                       | 1.74.0                       |
+|LLVM  | 13.0.0                      | 13.0.0                       | 13.0.0                       |
+|CMake | 3.21.1                      | 3.19.2                       | 3.22.2                       |
+|IDE   | CLion 2021.3.3              | Visual Studio 2019 Community | CLion 2021.3.3               |
+|CXX   | Apple Clang 12.0.0.12000032 | Microsoft CL 19.24.28316     | GCC 11.2.0                   |
 
 ## Installing Boost
 
@@ -44,6 +44,11 @@ Using [Homebrew](https://brew.sh), Boost can be installed as follows.
 ```
 
 ### Linux
+
+Using the [Advanced Package Tool (APT)](https://wiki.debian.org/Apt), Boost can be installed as follows.
+```
+> sudo apt install boost
+```
 
 ### Windows
 
@@ -80,6 +85,9 @@ It is recommended to use Microsoft's [vcpkg](https://github.com/microsoft/vcpkg)
 ```
 
 ### Linux
+```
+> sudo apt install llvm
+```
 
 ### Windows
 
