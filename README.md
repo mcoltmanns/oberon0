@@ -12,7 +12,7 @@ This project provides the skeleton of a compiler for the Oberon-0 programming la
 subset of the full Oberon programming language, as described in Niklaus Wirth's book 
 ["Compiler Construction"](http://www.ethoberon.ethz.ch/WirthPubl/CBEAll.pdf) (Chapter 6, 
 pp. 30-32). The sekelton is written in C++ and serves as the starting point of the 
-programming project that accompanies the the MSc course "Compiler Construction" taught at 
+programming project that accompanies the the MSc course "Compiler Construction" at 
 the [University of Konstanz](https://uni.kn). The goal of this project is for students to 
 design and develop a parser and intermediate representation for the Oberon-0 programming 
 language. In order to generate executable code, they will transform their high-level 
@@ -21,9 +21,9 @@ intermediate representation into the low-level intermediate representation of th
 
 ## Dependencies and Toolchains
 
-Owing to its origin as a course project, care has been taken that the provided C++ 
-sourcecode can be compiled on different operating systems and with different toolchains. 
-Currently, the sourcecode only depends on [Boost](https://www.boost.org) and [LLVM](https://llvm.org).
+The provided C++ sourcecode can be compiled on different operating systems and with different 
+toolchains. Currently, the sourcecode only depends on [Boost](https://www.boost.org) and 
+[LLVM](https://llvm.org).
 As of February 2022, the following configurations are tested and known to work.
 
 |      | macOS              | Windows              | Linux (Ubuntu) |
@@ -57,7 +57,7 @@ It is recommended to use Microsoft's [vcpkg](https://github.com/microsoft/vcpkg)
 1. Install vcpkg by following the steps below.
 
    ```
-   > git clone https://github.com/Microsoft/vcpkg.git
+   > git clone https://github.com/microsoft/vcpkg.git
    > cd vcpkg
    > .\bootstrap-vcpkg.bat
    ```
@@ -91,7 +91,7 @@ It is recommended to use Microsoft's [vcpkg](https://github.com/microsoft/vcpkg)
 
 ### Windows
 
-Using the Microsoft C++ Library Manager is the simplest way to install LLVM on Windows (x64). There are, however, some drawbacks. First, vcpkg will compile and install both the release and the debug version of LLVM, which requires 70-80 GB of free harddisk space during installation. Second, it typically takes a while before a new release of LLVM is integrated into the vcpkg distribution. Should any of these two factors present a problem, please refer to the instructions given below on how to build LLVM from the sources.
+Using the Microsoft C++ Library Manager is the simplest way to install LLVM on Windows (x64). There are, however, some drawbacks. First, vcpkg will compile and install both the release and the debug version of LLVM, which requires 70-80 GB of free harddisk space during installation. Second, it typically takes a while before a new release of LLVM is integrated into the vcpkg distribution.
 
 Assuming, you already followed the steps described above to install Boost using vcpkg, LLVM can be compiled and installed with the following command.
 
