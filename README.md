@@ -38,7 +38,6 @@ installation instructions for macOS, Linux, and Windows are given below.
 ### macOS
 
 Using [Homebrew](https://brew.sh), Boost and LLVM can be installed as follows.
-
 ```
 > brew install boost
 > brew install llvm
@@ -47,7 +46,6 @@ Using [Homebrew](https://brew.sh), Boost and LLVM can be installed as follows.
 ### Linux
 
 Using the [Advanced Package Tool (APT)](https://wiki.debian.org/Apt), Boost and LLVM can be installed as follows.
-
 ```
 > sudo apt install boost
 > sudo apt install llvm
@@ -59,42 +57,98 @@ It is recommended to use Microsoft's [vcpkg](https://github.com/microsoft/vcpkg)
 order to install Boost and LLVM.
 
 1. Install vcpkg by following the steps below.
-
    ```
    > git clone https://github.com/microsoft/vcpkg.git
    > cd vcpkg
    > .\bootstrap-vcpkg.bat
    ```
-
 2. Configure automatic, user-wide integration of libraries managed by vcpkg with Visual Studio.
-
    ```
    > .\vcpkg integrate install
    ```
-
 3. Use vcpkg to install the following Boost libraries: `system`, `convert`, `filesystem`, and `program_options`.
-
    ```
    > .\vcpkg install boost-system:x64-windows
    > .\vcpkg install boost-convert:x64-windows
    > .\vcpkg install boost-filesystem:x64-windows
    > .\vcpkg install boost-program-options:x64-windows
    ```
-   
 4. Using the Microsoft C++ Library Manager is also the simplest way to install LLVM on Windows (x64). Assuming that you 
    already followed the steps described above to install Boost using vcpkg, LLVM can be compiled and installed with the 
    following command.
-
    ```
    > .\vcpkg install llvm:x64-windows
    ```
-
    There are, however, some drawbacks to installing LLVM using the Microsoft C++ Library Manager. First, vcpkg will 
    compile and install both the release and the debug version of LLVM, which requires 70-80 GB of free hard-disk space 
    during installation. Second, it typically takes a while before a new release of LLVM is integrated into the vcpkg 
    distribution. Should any of these two factors present a problem, please refer to the instructions on how to build 
-   LLVM from the sources in the [LLVM Demo](dbis/education/llvm-demo:README.md) project.
-   
+   LLVM from the sources in the [LLVM Demo](https://gitlab.inf.uni-konstanz.de/dbis/education/llvm-demo) project.
  
+## Cloning the Project
 
+In order to clone the repository from GitLab, use the following command.
+```
+> git clone https://gitlab.inf.uni-konstanz.de/dbis/education/oberon0c.git
+```
+This will create a new directory `oberon0c` in the current directory. This new directory is referred to as the *root 
+directory* of the project.  
 
+## Building the Project
+
+For macOS and Linux, [CLion](https://www.jetbrains.com/clion/) is recommended as a development environment. For Windows, 
+the recommended development environment is [Visual Studio](https://visualstudio.microsoft.com/vs/). Alternatively, 
+[CMake](https://cmake.org) can be used directly on the command line to build the project.
+
+### CLion
+
+In order to build the compiler for the Oberon-0 programming language using CLion, follow the steps below.
+
+1. Start CLion and select `Open` in the welcome dialog.
+2. Navigate to the root directory of the project, e.g., `oberon0c`, to which you cloned the project repository and 
+   click `Open`.
+4. Once the project is open, build it using the `Build` → `Build Project` menu.
+
+**Note** Under macOS on Apple Silicon (e.g., M1), it may be required to pass the command line argument 
+`-DCMAKE_OSX_ARCHITECTURES=arm64` to CMake to ensure that an ARM64 binary is built.
+
+Once the build successfully terminates, the `oberon0c` executable can be found in the `oberon0c/cmake-build-debug` or 
+`oberon0c/cmake-build-release` subdirectory.
+
+### Visual Studio
+
+In order to build the compiler for the Oberon-0 programming language using Visual Studio, follow the steps below.
+
+1. Start Visual Studio and select `File` → `Open` → `Folder...` from the menu or press `Ctrl`+`Shift`+`Alt`+`O`.
+2. Navigate to the root directory of the project, e.g., `oberon0c`, to which you cloned the project repository and 
+   click `Select Folder`.
+4. Visual Studio will now run CMake to set up the project. Make sure that the build configuration in the toolbar of 
+   Visual Studio matches the build type specified earlier. For example, if LLVM was compiled in `Release` mode, Visual 
+   Studio's build configuration has to be `x64-Release`.
+5. Start the build using the `Build` → `Build All` menu or press `Ctrl`+`Shift`+`B`.
+
+Once the build successfully terminates, the `oberon0c.exe` executable can be found in the 
+`oberon0c\out\build\x64-Debug` or `oberon0c\out\build\x64-Release` directory.
+
+### CMake
+
+In order to build the compiler for the Oberon-0 programming language using CMake, follow the steps below.
+
+1. On the command line, navigate to the root directory of the project, e.g., `oberon0c`. The root directory of the 
+   project is the directory that was created when you cloned the GitLab repository.
+2. Create a build directory.
+   ```
+   > mkdir build
+   ```
+3. Navigate to the build directory and run CMake to configure the project and generate a native build system.
+   ```
+   > cd build
+   > cmake ..
+   ```
+4. Call the build system to compile and link the project.
+   ```
+   > cmake --build .
+   ```
+
+Once the build successfully terminates, the executable of the compiler for the Oberon-0 programming language can be 
+found in the `build` directory. 
