@@ -1,5 +1,5 @@
 /*
- * Tokens returned by the scanner of the Oberon LLVM compiler.
+ * Tokens returned by the scanner of the Oberon-0 compiler.
  *
  * Created by Michael Grossniklaus on 2/23/18.
  */
@@ -12,8 +12,12 @@ TokenType Token::type() const {
     return type_;
 }
 
-FilePos Token::pos() const {
-    return pos_;
+FilePos Token::start() const {
+    return start_;
+}
+
+FilePos Token::end() const {
+    return end_;
 }
 
 void Token::print(std::ostream &stream) const {
@@ -29,15 +33,15 @@ std::ostream& operator<<(std::ostream &stream, const TokenType &type) {
     std::string result;
     switch(type) {
         case TokenType::eof: result = "<eof>"; break;
-        case TokenType::nil: result = "NIL"; break;
         case TokenType::undef: result = "<undefined>"; break;
         case TokenType::boolean_literal: result = "BOOLEAN literal"; break;
         case TokenType::byte_literal: result = "BYTE literal"; break;
         case TokenType::char_literal: result = "CHAR literal"; break;
-        case TokenType::integer_literal: result = "INTEGER literal"; break;
-        case TokenType::longint_literal: result = "LONGINT literal"; break;
-        case TokenType::real_literal: result = "REAL literal"; break;
-        case TokenType::longreal_literal: result = "LONGREAL literal"; break;
+        case TokenType::short_literal: result = "SHORTINT literal"; break;
+        case TokenType::int_literal: result = "INTEGER literal"; break;
+        case TokenType::long_literal: result = "LONGINT literal"; break;
+        case TokenType::float_literal: result = "REAL literal"; break;
+        case TokenType::double_literal: result = "LONGREAL literal"; break;
         case TokenType::string_literal: result = "STRING literal"; break;
         case TokenType::const_ident: result = "identifier"; break;
         case TokenType::period: result = "."; break;
@@ -68,6 +72,7 @@ std::ostream& operator<<(std::ostream &stream, const TokenType &type) {
         case TokenType::op_geq: result = ">="; break;
         case TokenType::op_becomes: result = ":="; break;
         case TokenType::kw_module: result = "MODULE"; break;
+        case TokenType::kw_import: result = "IMPORT"; break;
         case TokenType::kw_procedure: result = "PROCEDURE"; break;
         case TokenType::kw_begin: result = "BEGIN"; break;
         case TokenType::kw_end: result = "END"; break;
@@ -92,7 +97,8 @@ std::ostream& operator<<(std::ostream &stream, const TokenType &type) {
         case TokenType::kw_of: result = "OF"; break;
         case TokenType::kw_extern: result = "EXTERN"; break;
         case TokenType::kw_return: result = "RETURN"; break;
-        default: result = "unknown token"; break;
+        case TokenType::kw_nil: result = "NIL"; break;
+        default: result = "undefined token"; break;
     }
     stream << result;
     return stream;

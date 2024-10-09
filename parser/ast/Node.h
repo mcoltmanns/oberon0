@@ -1,5 +1,5 @@
 /*
- * Header file of the base class of all AST nodes used by the Oberon-0 compiler.
+ * Base class of all AST nodes used by the Oberon-0 compiler.
  *
  * Created by Michael Grossniklaus on 2/2/18.
  */

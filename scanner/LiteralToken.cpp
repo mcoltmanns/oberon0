@@ -1,5 +1,5 @@
 /*
- * Literal tokens returned by scanner of the Oberon LLVM compiler.
+ * Literal tokens returned by scanner of the Oberon-0 compiler.
  *
  * Created by Michael Grossniklaus on 3/1/20.
  */
@@ -12,12 +12,16 @@ void BooleanLiteralToken::print(std::ostream &stream) const {
     stream << this->type() << ": " << (value() ? "TRUE" : "FALSE");
 }
 
-IntegerLiteralToken::~IntegerLiteralToken() noexcept = default;
+ShortLiteralToken::~ShortLiteralToken() noexcept = default;
 
-LongintLiteralToken::~LongintLiteralToken() noexcept = default;
+IntLiteralToken::~IntLiteralToken() noexcept = default;
 
-RealLiteralToken::~RealLiteralToken() noexcept = default;
+LongLiteralToken::~LongLiteralToken() noexcept = default;
 
-LongrealLiteralToken::~LongrealLiteralToken() noexcept = default;
+FloatLiteralToken::~FloatLiteralToken() noexcept = default;
+
+DoubleLiteralToken::~DoubleLiteralToken() noexcept = default;
 
 StringLiteralToken::~StringLiteralToken() noexcept = default;
+
+CharLiteralToken::~CharLiteralToken() noexcept = default;

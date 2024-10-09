@@ -5,23 +5,33 @@
  */
 
 #include <iostream>
+#include <string>
 #include "scanner/Scanner.h"
+
+using std::cerr;
+using std::cout;
+using std::endl;
+using std::string;
 
 int main(const int argc, const char *argv[]) {
     if (argc != 2) {
-        std::cout << "Usage: oberon0c <filename>" << std::endl;
-        return 1;
+        cerr << "Usage: oberon0c <filename>" << endl;
+        exit(1);
     }
-    std::string filename = argv[1];
-    auto logger = std::make_unique<Logger>();
-    logger->setLevel(LogLevel::DEBUG);
-    auto scanner = std::make_unique<Scanner>(filename, logger.get());
-    auto token = scanner->next();
+    string filename = argv[1];
+    Logger logger;
+    logger.setLevel(LogLevel::DEBUG);
+    Scanner scanner(filename, logger);
+    auto token = scanner.next();
     while (token->type() != TokenType::eof) {
-        std::cout << token.operator*() << std::endl;
-        token = scanner->next();
+        cout << token.operator*() << endl;
+        token = scanner.next();
     }
-    std::cout << token.operator*() << std::endl;
-    logger->info(filename, "Scanning complete.");
-    exit(0);
+    cout << token.operator*() << endl;
+    string status = (logger.getErrorCount() == 0 ? "complete" : "failed");
+    logger.info("Compilation " + status + ": " +
+                to_string(logger.getErrorCount()) + " error(s), " +
+                to_string(logger.getWarningCount()) + " warning(s), " +
+                to_string(logger.getInfoCount()) + " message(s).");
+    exit(logger.getErrorCount() != 0);
 }

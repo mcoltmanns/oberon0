@@ -1,5 +1,5 @@
 /*
- * Base class for all AST nodes used in the Oberon LLVM compiler.
+ * Base class of all AST nodes used by the Oberon-0 compiler.
  *
  * Created by Michael Grossniklaus on 2/2/18.
  */

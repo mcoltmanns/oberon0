@@ -1,5 +1,5 @@
 /*
- * Undefined token returned scanner of the Oberon LLVM compiler.
+ * Undefined token returned scanner of the Oberon-0 compiler.
  *
  * Created by Michael Grossniklaus on 12/28/18.
  */

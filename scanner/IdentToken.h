@@ -1,5 +1,5 @@
 /*
- * Identifier token returned by scanner of the Oberon LLVM compiler.
+ * Ident token returned by scanner of the Oberon-0 compiler.
  *
  * Created by Michael Grossniklaus on 2/27/18.
  */
@@ -16,8 +16,8 @@ private:
     std::string value_;
 
 public:
-    explicit IdentToken(const FilePos &pos, std::string value) :
-            Token(TokenType::const_ident, pos), value_(std::move(value)) { };
+    explicit IdentToken(const FilePos &start, const FilePos &end, std::string value) :
+            Token(TokenType::const_ident, start, end), value_(std::move(value)) { };
     ~IdentToken() override = default;
 
     [[nodiscard]] std::string value() const;

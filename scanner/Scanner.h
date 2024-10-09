@@ -1,5 +1,5 @@
 /*
- * Scanner used by the Oberon LLVM compiler.
+ * Scanner used by the Oberon-0 compiler.
  *
  * Created by Michael Grossniklaus on 12/15/17.
  */
@@ -8,45 +8,56 @@
 #define OBERON0C_SCANNER_H
 
 
-#include <memory>
-#include <string>
-#include <queue>
-#include <unordered_map>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
-#include <boost/filesystem.hpp>
+#include <memory>
+#include <queue>
+#include <string>
+#include <unordered_map>
+
 #include "Token.h"
 #include "LiteralToken.h"
-#include "../util/Logger.h"
+#include "util/Logger.h"
+
+using std::filesystem::path;
+using std::ifstream;
+using std::queue;
+using std::streampos;
+using std::string;
+using std::unique_ptr;
+using std::unordered_map;
 
 class Scanner {
 
 private:
-    std::string filename_;
-    Logger *logger_;
-    std::queue<const Token*> tokens_;
+    Logger &logger_;
+    const path &path_;
+    queue<unique_ptr<const Token>> tokens_;
     int lineNo_, charNo_;
-    std::unordered_map<std::string, TokenType> keywords_;
-    std::ifstream file_;
     char ch_;
+    bool eof_;
+    unordered_map<string, TokenType> keywords_;
+    ifstream file_;
 
     void init();
     void read();
-    FilePos current() const;
-    const Token* scanToken();
-    const Token* scanIdent();
-    const Token* scanNumber();
-    const Token* scanString();
+    FilePos current();
+    unique_ptr<const Token> scanToken();
+    unique_ptr<const Token> scanIdent();
+    unique_ptr<const Token> scanNumber();
+    unique_ptr<const Token> scanString();
     void scanComment();
 
 public:
-    explicit Scanner(boost::filesystem::path path, Logger *logger);
+    Scanner(const path &path, Logger &logger);
     ~Scanner();
-    const Token* peek();
-    std::unique_ptr<const Token> next();
+    const Token* peek(bool = false);
+    unique_ptr<const Token> next();
+    void seek(const FilePos &);
 
-    static std::string escape(std::string str);
-    static std::string unescape(std::string str);
+    static string escape(string str);
+    static string unescape(string str);
 
 };
 
