@@ -24,10 +24,10 @@ int main(const int argc, const char *argv[]) {
     Scanner scanner(filename, logger);
     auto token = scanner.next();
     while (token->type() != TokenType::eof) {
-        cout << token.operator*() << endl;
+        cout << *token << endl;
         token = scanner.next();
     }
-    cout << token.operator*() << endl;
+    cout << *token << endl;
     string status = (logger.getErrorCount() == 0 ? "complete" : "failed");
     logger.info("Compilation " + status + ": " +
                 to_string(logger.getErrorCount()) + " error(s), " +
