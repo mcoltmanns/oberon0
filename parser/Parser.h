@@ -22,7 +22,7 @@ private:
 
     const string ident();
 
-    long number();
+    bool number(long * out);
 
     void module();
 

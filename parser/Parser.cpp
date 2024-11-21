@@ -11,8 +11,9 @@ const string Parser::ident() {
 }
 
 // parse and consume any whole number token into a long integer
-// logs error and returns NaN if token wasn't a number
-long Parser::number() {
+// if token was a number, writes its value to parameter out
+// logs error, does nothing with out, and returns false if token wasn't a number
+bool Parser::number(long * out) {
     if(not expect(TokenType::byte_literal)
         and not expect(TokenType::short_literal)
         and not expect(TokenType::int_literal)
@@ -20,9 +21,11 @@ long Parser::number() {
         stringstream ss;
         ss << "expected a whole number but got a " << scanner_.peek()->type() << " instead";
         logger_.error(scanner_.peek()->start(), ss.str());
+        return false;
     }
     // holy jank! there must be a better way
-    return stol(to_string(scanner_.next()));
+    *out = stol(to_string(scanner_.next()));
+    return true;
 }
 
 // expect a certain token type
@@ -54,7 +57,7 @@ void Parser::parse() {
 
 void Parser::module() {
     accept(TokenType::kw_module);
-    ident();
+    auto open = ident();
     accept(TokenType::semicolon);
     declarations();
     if(expect(TokenType::kw_begin)) {
@@ -62,7 +65,7 @@ void Parser::module() {
         statementSequence();
     }
     accept(TokenType::kw_end);
-    ident();
+    auto close = ident();
     accept(TokenType::period);
 }
 
@@ -155,8 +158,8 @@ void Parser::type() {
         if(expect(TokenType::const_ident)) {
             identList();
             accept(TokenType::colon);
+            type();
         }
-        type();
         while(expect(TokenType::semicolon)) {
             accept(TokenType::semicolon);
             if(expect(TokenType::const_ident)) {
@@ -165,7 +168,7 @@ void Parser::type() {
                 type();
             }
         }
-        expect(TokenType::kw_end);
+        accept(TokenType::kw_end);
     }
     else {
         ident();
@@ -356,7 +359,8 @@ void Parser::factor() {
         factor();
     }
     else {
-        number();
+        long val;
+        number(&val);
     }
 }
 

@@ -15,7 +15,7 @@ FormalParameters -> "(" [ [ VAR ] IdentList : Type { ; [ VAR ] IdentList : Type 
     FIRST = (
     FOLLOW = ;
 
-Type -> ident | ARRAY Expression OF Type | RECORD [ IdentList : ] Type { ; [ IdentList : Type ] } END
+Type -> ident | ARRAY Expression OF Type | RECORD [ IdentList : Type ] { ; [ IdentList : Type ] } END
     FIRST = ident ARRAY RECORD
     FOLLOW = ; )
 
