@@ -58,7 +58,8 @@ set(PARSER_SOURCES
         parser/ast/Node.cpp parser/ast/Node.h
         parser/ast/NodeVisitor.cpp parser/ast/NodeVisitor.h)
 
-set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES})
+set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES}
+        parser/Parser.cpp)
 
 add_executable(${OBERON0_C} main.cpp ${ALL_SOURCES})
 

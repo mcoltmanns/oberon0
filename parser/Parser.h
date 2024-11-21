@@ -22,13 +22,50 @@ private:
 
     const string ident();
 
+    long number();
+
     void module();
+
+    void declarations();
+
+    void formalParameters();
+
+    void type();
+
+    void identList();
+
+    void statementSequence();
+
+    void statement();
+
+    void assignmentOrProcedureCall();
+
+    void ifStatement();
+
+    void whileStatement();
+
+    void repeatStatement();
+
+    void expression();
+
+    void simpleExpression();
+
+    void term();
+
+    void factor();
+
+    void selector();
 
 public:
     explicit Parser(Scanner &scanner, Logger &logger) : scanner_(scanner), logger_(logger) {};
     ~Parser() = default;
     void parse();
 
+    bool expect(TokenType token);
+
+    unique_ptr<const Token> accept(TokenType token);
+
+    unique_ptr<const IntLiteralToken> expectInt();
 };
 
 

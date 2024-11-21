@@ -6,6 +6,8 @@
 
 #include <iostream>
 #include <string>
+
+#include "parser/Parser.h"
 #include "scanner/Scanner.h"
 
 using std::cerr;
@@ -22,12 +24,8 @@ int main(const int argc, const char *argv[]) {
     Logger logger;
     logger.setLevel(LogLevel::DEBUG);
     Scanner scanner(filename, logger);
-    auto token = scanner.next();
-    while (token->type() != TokenType::eof) {
-        cout << token.operator*() << endl;
-        token = scanner.next();
-    }
-    cout << token.operator*() << endl;
+    Parser parser{scanner, logger};
+    parser.parse();
     string status = (logger.getErrorCount() == 0 ? "complete" : "failed");
     logger.info("Compilation " + status + ": " +
                 to_string(logger.getErrorCount()) + " error(s), " +

@@ -1,0 +1,68 @@
+Pretty sure this is what the parser implements. I might have forgotten to update it during bugfixing though.
+Tweaked slightly from what's in the book - repeat statements are allowed, and some rules which i felt complicated building the parser have been condensed/squashed.
+
+S -> { Module } EOF
+
+Module -> MODULE ident ; Declarations [ BEGIN StatementSequence ] END ident .
+    FIRST = MODULE
+    FOLLOW = MODULE EOF
+
+Declarations -> [ CONST { ident = Expression ; } ] [ TYPE { ident = Type ; } ] [ VAR { IdentList : Type ; } ] { PROCEDURE ident [ FormalParameters ] ; Declarations [ BEGIN StatementSequence ] END ident ; }
+    FIRST = CONST TYPE VAR PROCEDURE empty
+    FOLLOW = BEGIN END
+
+FormalParameters -> "(" [ [ VAR ] IdentList : Type { ; [ VAR ] IdentList : Type } ] ")"
+    FIRST = (
+    FOLLOW = ;
+
+Type -> ident | ARRAY Expression OF Type | RECORD [ IdentList : ] Type { ; [ IdentList : Type ] } END
+    FIRST = ident ARRAY RECORD
+    FOLLOW = ; )
+
+IdentList -> ident { , ident }
+    FIRST = ident
+    FOLLOW = :
+
+StatementSequence -> Statement { ; Statement }
+    FIRST = ident IF WHILE REPEAT empty
+    FOLLOW = END ELSIF ELSE UNTIL
+
+Statement -> [ AssignmentOrProcedureCall | IfStatement | WhileStatement | RepeatStatement ]
+    FIRST = ident IF WHILE REPEAT empty
+    FOLLOW = ; END ELSIF ELSE UNTIL
+
+AssignmentOrProcedureCall -> ident Selector := Expression | ident Selector [ "(" [ Expression { , Expression } ] ")" ]
+    FIRST = ident
+    FOLLOW = ; END ELSIF ELSE UNTIL
+
+IfStatement -> IF Expression THEN StatementSequence { ELSIF Expression THEN StatementSequence } [ ELSE StatementSequence ] END
+    FIRST = IF
+    FOLLOW = ; END ELSIF ELSE UNTIL
+
+WhileStatement -> WHILE Expression DO StatementSequence END
+    FIRST = WHILE
+    FOLLOW = ; END ELSIF ELSE UNTIL
+
+RepeatStatement -> REPEAT StatementSequence UNTIL Expression
+    FIRST = REPEAT
+    FOLLOW = ; END ELSIF ELSE UNTIL
+
+Expression -> SimpleExpression [ ( = | # | < | <= | > | >= ) SimpleExpression ]
+    FIRST = FIRST(SimpleExpression)
+    FOLLOW = ; END ELSIF ELSE UNTIL DO THEN OF ) ]
+
+SimpleExpression -> [ + | - ] Term { ( + | - | OR ) Term }
+    FIRST = + - FIRST(Term)
+    FOLLOW = = # < <= > >= ; END ELSIF ELSE UNTIL DO THEN OF ) ]
+
+Term -> Factor { ( * | DIV | MOD | & ) Factor }
+    FIRST = FIRST(Factor)
+    FOLLOW = + - OR FOLLOW(SimpleExpression)
+
+Factor -> ident Selector | number | "(" Expression ")" | ~ Factor
+    FIRST = ident number ( ~
+    FOLLOW = * DIV MOD & FOLLOW(Term)
+
+Selector -> { . ident | "[" Expression "]" }
+    FIRST = . [ empty
+    FOLLOW = FOLLOW(Factor) := (
