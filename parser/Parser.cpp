@@ -3,17 +3,31 @@
 //
 
 #include "Parser.h"
+
+#include <valarray>
+
 #include "global.h"
+#include "ast/IdentNode.h"
+#include "ast/LiteralNode.h"
+#include "ast/OperatorNode.h"
+#include "scanner/IdentToken.h"
 
 
-const string Parser::ident() {
-    return to_string(accept(TokenType::const_ident));
+unique_ptr<IdentNode> Parser::ident() {
+    auto start = scanner_.peek()->start();
+    const Token* tokenPtr = accept(TokenType::const_ident).get(); // token is IdentToken : Token
+    // this is dangerous! but dynamic_cast causes sigsegv.
+    // even in this form not totally safe. crashes in funny ways sometimes if compilation fails
+    // we can be sure that we always end up with a value field, because the accept() call guarantees it
+    string name = static_cast<const IdentToken*>(tokenPtr)->value();
+    return std::make_unique<IdentNode>(name, start);
 }
 
-// parse and consume any whole number token into a long integer
+// parse and consume any whole number token into a literalNode
 // if token was a number, writes its value to parameter out
-// logs error, does nothing with out, and returns false if token wasn't a number
-bool Parser::number(long * out) {
+// if not, return nullptr and log error
+unique_ptr<LiteralNode> Parser::number() {
+    auto start = scanner_.peek()->start();
     if(not expect(TokenType::byte_literal)
         and not expect(TokenType::short_literal)
         and not expect(TokenType::int_literal)
@@ -21,11 +35,14 @@ bool Parser::number(long * out) {
         stringstream ss;
         ss << "expected a whole number but got a " << scanner_.peek()->type() << " instead";
         logger_.error(scanner_.peek()->start(), ss.str());
-        return false;
+        return nullptr;
     }
-    // holy jank! there must be a better way
-    *out = stol(to_string(scanner_.next()));
-    return true;
+    // again, very dangerous! but like in ident(), dynamic cast does not work
+    // we throw every number into a long because this is a modern compiler!
+    // with access to modern hardware on which we can store as many longs as we want!
+    const Token* tokenPtr = scanner_.next().get();
+    long val = static_cast<const LiteralToken<long>*>(tokenPtr)->value();
+    return std::make_unique<LiteralNode>(val, start);
 }
 
 // expect a certain token type
@@ -50,331 +67,429 @@ unique_ptr<const Token> Parser::accept(TokenType token) {
 
 void Parser::parse() {
     while(expect(TokenType::kw_module)) {
-        module();
+        module()->print(cout);
     }
     accept(TokenType::eof);
 }
 
-void Parser::module() {
-    accept(TokenType::kw_module);
-    auto open = ident();
+std::unique_ptr<Node> Parser::module() {
+    auto result = std::make_unique<Node>(NodeType::module, accept(TokenType::kw_module)->start());
+    result->addChild(ident());
     accept(TokenType::semicolon);
-    declarations();
+    result->addChild(declarations());
     if(expect(TokenType::kw_begin)) {
         accept(TokenType::kw_begin);
-        statementSequence();
+        result->addChild(statementSequence());
     }
     accept(TokenType::kw_end);
-    auto close = ident();
+    result->addChild(ident());
     accept(TokenType::period);
+    return result;
 }
 
-void Parser::declarations() {
+std::unique_ptr<Node> Parser::declarations() {
     bool empty = true; // apply e-prod?
+    auto result = std::make_unique<Node>(NodeType::declarations, scanner_.peek()->start());
     if(expect(TokenType::kw_const)) {
         empty = false;
         accept(TokenType::kw_const);
         while(expect(TokenType::const_ident)) {
-            ident();
+            auto constant = std::make_unique<Node>(NodeType::dec_const, scanner_.peek()->start());
+            constant->addChild(ident());
             accept(TokenType::op_eq);
-            expression();
+            constant->addChild(expression());
             accept(TokenType::semicolon);
+            result->addChild(std::move(constant));
         }
     }
     if(expect(TokenType::kw_type)) {
         empty = false;
         accept(TokenType::kw_type);
         while(expect(TokenType::const_ident)) {
-            ident();
+            auto typedec = std::make_unique<Node>(NodeType::dec_type, scanner_.peek()->start());
+            typedec->addChild(ident());
             accept(TokenType::op_eq);
-            type();
+            typedec->addChild(type());
             accept(TokenType::semicolon);
+            result->addChild(std::move(typedec));
         }
     }
     if(expect(TokenType::kw_var)) {
         empty = false;
         accept(TokenType::kw_var);
         while(expect(TokenType::const_ident)) {
-            identList();
+            auto var = std::make_unique<Node>(NodeType::dec_var, scanner_.peek()->start());
+            var->addChild(identList());
             accept(TokenType::colon);
-            type();
+            var->addChild(type());
             accept(TokenType::semicolon);
+            result->addChild(std::move(var));
         }
     }
     while(expect(TokenType::kw_procedure)) {
+        auto proc = std::make_unique<Node>(NodeType::dec_proc, accept(TokenType::kw_procedure)->start());
         empty = false;
-        accept(TokenType::kw_procedure);
-        ident();
+        proc->addChild(ident());
         if(expect(TokenType::lparen)) {
-            formalParameters();
+            proc->addChild(formalParameters());
         }
         accept(TokenType::semicolon);
-        declarations();
+        proc->addChild(declarations());
         if(expect(TokenType::kw_begin)) {
             accept(TokenType::kw_begin);
-            statementSequence();
+            proc->addChild(statementSequence());
         }
         accept(TokenType::kw_end);
-        ident();
+        proc->addChild(ident());
         accept(TokenType::semicolon);
+        result->addChild(std::move(proc));
     }
     // applying e-prod? check follow
     if(empty and not expect(TokenType::kw_begin) and not expect(TokenType::kw_end)) {
         logger_.error(scanner_.peek()->start(), "unexpected token after empty declarations");
     }
+    return result;
 }
 
-void Parser::formalParameters() {
-    accept(TokenType::lparen);
+std::unique_ptr<Node> Parser::formalParameters() {
+    auto result = std::make_unique<Node>(NodeType::formal_parameters, accept(TokenType::lparen)->start());
     if(expect(TokenType::kw_var) or expect(TokenType::const_ident)) {
+        unique_ptr<Node> param;
         if(expect(TokenType::kw_var)) {
-            accept(TokenType::kw_var);
+            param = std::make_unique<Node>(NodeType::fp_reference, accept(TokenType::kw_var)->start());
         }
-        identList();
+        else param = std::make_unique<Node>(NodeType::fp_copy, scanner_.peek()->start());
+        param->addChild(identList());
         accept(TokenType::colon);
-        type();
+        param->addChild(type());
+        result->addChild(std::move(param));
         while(expect(TokenType::semicolon)) {
             accept(TokenType::semicolon);
+            unique_ptr<Node> param;
             if(expect(TokenType::kw_var)) {
-                accept(TokenType::kw_var);
+                param = std::make_unique<Node>(NodeType::fp_reference, accept(TokenType::kw_var)->start());
             }
-            identList();
+            else param = std::make_unique<Node>(NodeType::fp_copy, scanner_.peek()->start());
+            param->addChild(identList());
             accept(TokenType::colon);
-            type();
+            param->addChild(type());
+            result->addChild(std::move(param));
         }
     }
     accept(TokenType::rparen);
+    return result;
 }
 
-void Parser::type() {
+std::unique_ptr<Node> Parser::type() {
+    unique_ptr<Node> result;
     if(expect(TokenType::kw_array)) {
-        accept(TokenType::kw_array);
-        expression();
+        result = std::make_unique<Node>(NodeType::type_array, accept(TokenType::kw_array)->start());
+        result->addChild(expression());
         accept(TokenType::kw_of);
-        type();
+        result->addChild(type());
     }
     else if(expect(TokenType::kw_record)) {
-        accept(TokenType::kw_record);
+        result = std::make_unique<Node>(NodeType::type_record, accept(TokenType::kw_record)->start());
         if(expect(TokenType::const_ident)) {
-            identList();
+            auto fields = std::make_unique<Node>(NodeType::record_field_list, scanner_.peek()->start());
+            fields->addChild(identList());
             accept(TokenType::colon);
-            type();
+            fields->addChild(type());
+            result->addChild(std::move(fields));
         }
         while(expect(TokenType::semicolon)) {
             accept(TokenType::semicolon);
             if(expect(TokenType::const_ident)) {
-                identList();
+                auto fields = std::make_unique<Node>(NodeType::record_field_list, scanner_.peek()->start());
+                fields->addChild(identList());
                 accept(TokenType::colon);
-                type();
+                fields->addChild(type());
+                result->addChild(std::move(fields));
             }
         }
         accept(TokenType::kw_end);
     }
     else {
-        ident();
+        result = std::make_unique<Node>(NodeType::type_raw, scanner_.peek()->start());
+        result->addChild(ident());
     }
+    return result;
 }
 
-void Parser::identList() {
-    ident();
+std::unique_ptr<Node> Parser::identList() {
+    auto result = std::make_unique<Node>(NodeType::ident_list, scanner_.peek()->start());
+    result->addChild(ident());
     while(expect(TokenType::comma)) {
         accept(TokenType::comma);
-        ident();
+        result->addChild(ident());
     }
+    return result;
 }
 
-void Parser::statementSequence() {
-    statement();
+std::unique_ptr<Node> Parser::statementSequence() {
+    auto result = std::make_unique<Node>(NodeType::statement_seq, scanner_.peek()->start());
+    result->addChild(statement());
     while(expect(TokenType::semicolon)) {
         accept(TokenType::semicolon);
-        statement();
+        result->addChild(statement());
     }
+    return result;
 }
 
-void Parser::statement() {
+std::unique_ptr<Node> Parser::statement() {
     if(expect(TokenType::const_ident)) {
-        assignmentOrProcedureCall();
+        return assignmentOrProcedureCall();
     }
     else if(expect(TokenType::kw_if)) {
-        ifStatement();
+        return ifStatement();
     }
     else if(expect(TokenType::kw_while)) {
-        whileStatement();
+        return whileStatement();
     }
     else if(expect(TokenType::kw_repeat)) {
-        repeatStatement();
+        return repeatStatement();
     }
     // empty?
     else if(not expect(TokenType::semicolon) and not expect(TokenType::kw_end) and not expect(TokenType::kw_elsif) and not expect(TokenType::kw_else) and not expect(TokenType::kw_until)) {
         logger_.error(scanner_.peek()->start(), "unexpected token after statement");
     }
+    return std::make_unique<Node>(NodeType::unknown, scanner_.peek()->start());
 }
 
-void Parser::assignmentOrProcedureCall() {
-    ident();
-    selector();
+std::unique_ptr<Node> Parser::assignmentOrProcedureCall() {
+    auto start = scanner_.peek()->start();
+    std::unique_ptr<Node> identifier = ident();
+    auto sel = selector();
+    std::unique_ptr<Node> result;
     if(expect(TokenType::op_becomes)) {
         // this is an assignment
         accept(TokenType::op_becomes);
-        expression();
+        result = std::make_unique<Node>(NodeType::assignment, start);
+        result->addChild(std::move(identifier));
+        if (sel != nullptr) result->addChild(std::move(sel));
+        result->addChild(expression());
     }
     else {
         // this is a procedure call
         // might there be parameters?
+        result = std::make_unique<Node>(NodeType::proc_call, start);
+        result->addChild(std::move(identifier));
+        if (sel != nullptr) result->addChild(std::move(sel));
         if(expect(TokenType::lparen)) {
             // there could be
             accept(TokenType::lparen);
             // not done immediately? there are parameters
             if(not expect(TokenType::rparen)) {
-                expression();
+                result->addChild(expression());
                 while(expect(TokenType::comma)) {
                     accept(TokenType::comma);
-                    expression();
+                    result->addChild(expression());
                 }
             }
             accept(TokenType::rparen);
         }
     }
+    return result;
 }
 
-void Parser::ifStatement() {
-    accept(TokenType::kw_if);
-    expression();
+std::unique_ptr<Node> Parser::ifStatement() {
+    auto result = std::make_unique<Node>(NodeType::if_statement, accept(TokenType::kw_if)->start());
+    result->addChild(expression());
     accept(TokenType::kw_then);
-    statementSequence();
+    result->addChild(statementSequence());
     while(expect(TokenType::kw_elsif)) {
-        accept(TokenType::kw_elsif);
+        auto elsif = std::make_unique<Node>(NodeType::if_alt, accept(TokenType::kw_elsif)->start());
         expression();
+        elsif->addChild(expression());
         accept(TokenType::kw_then);
-        statementSequence();
+        elsif->addChild(statementSequence());
+        result->addChild(std::move(elsif));
     }
     if(expect(TokenType::kw_else)) {
-        accept(TokenType::kw_else);
+        auto def = std::make_unique<Node>(NodeType::if_default, accept(TokenType::kw_else)->start());
+        def->addChild(statementSequence());
         statementSequence();
+        result->addChild(std::move(def));
     }
     accept(TokenType::kw_end);
+    return result;
 }
 
-void Parser::whileStatement() {
-    accept(TokenType::kw_while);
-    expression();
+std::unique_ptr<Node> Parser::whileStatement() {
+    auto result = std::make_unique<Node>(NodeType::while_statement, accept(TokenType::kw_while)->start());
+    result->addChild(expression());
     accept(TokenType::kw_do);
-    statementSequence();
+    result->addChild(statementSequence());
     accept(TokenType::kw_end);
+    return result;
 }
 
-void Parser::repeatStatement() {
-    accept(TokenType::kw_repeat);
-    statementSequence();
+std::unique_ptr<Node> Parser::repeatStatement() {
+    const auto result = std::make_unique<Node>(NodeType::repeat_statement, accept(TokenType::kw_repeat)->start());
+    result->addChild(statementSequence());
     accept(TokenType::kw_until);
-    expression();
+    result->addChild(expression());
+    return std::make_unique<Node>(NodeType::unknown, scanner_.peek()->start());
 }
 
-void Parser::expression() {
-    simpleExpression();
+std::unique_ptr<Node> Parser::expression() {
+    auto result = std::make_unique<Node>(NodeType::expression, scanner_.peek()->start());
+    auto left = simpleExpression();
+    unique_ptr<OperatorNode> op = nullptr;
+    unique_ptr<Node> right;
     if(expect(TokenType::op_eq)) {
-        accept(TokenType::op_eq);
-        simpleExpression();
+        op = std::make_unique<OperatorNode>(OperatorType::EQ, accept(TokenType::op_eq)->start());
+        right = simpleExpression();
     }
     else if(expect(TokenType::op_neq)) {
-        accept(TokenType::op_neq);
-        simpleExpression();
+        op = std::make_unique<OperatorNode>(OperatorType::NEQ, accept(TokenType::op_neq)->start());
+        right = simpleExpression();
     }
     else if(expect(TokenType::op_lt)) {
-        accept(TokenType::op_lt);
-        simpleExpression();
+        op = std::make_unique<OperatorNode>(OperatorType::LT, accept(TokenType::op_lt)->start());
+        right = simpleExpression();
     }
     else if(expect(TokenType::op_leq)) {
-        accept(TokenType::op_leq);
-        simpleExpression();
+        op = std::make_unique<OperatorNode>(OperatorType::LEQ, accept(TokenType::op_leq)->start());
+        right = simpleExpression();
     }
     else if(expect(TokenType::op_gt)) {
-        accept(TokenType::op_gt);
-        simpleExpression();
+        op = std::make_unique<OperatorNode>(OperatorType::GT, accept(TokenType::op_gt)->start());
+        right = simpleExpression();
     }
     else if(expect(TokenType::op_geq)) {
-        accept(TokenType::op_geq);
-        simpleExpression();
+        op = std::make_unique<OperatorNode>(OperatorType::GEQ, accept(TokenType::op_geq)->start());
+        right = simpleExpression();
     }
+    if (op != nullptr) {
+        result->addChild(std::move(left));
+        result->addChild(std::move(op));
+        result->addChild(std::move(right));
+        return result;
+    }
+    return left;
 }
 
-void Parser::simpleExpression() {
+std::unique_ptr<Node> Parser::simpleExpression() {
+    auto result = std::make_unique<Node>(NodeType::expression, scanner_.peek()->start());
+    unique_ptr<OperatorNode> lead = nullptr;
     if(expect(TokenType::op_plus)) {
-        accept(TokenType::op_plus);
+        lead = std::make_unique<OperatorNode>(OperatorType::PLUS, accept(TokenType::op_plus)->start());
+        result->addChild(std::move(lead));
     }
     else if(expect(TokenType::op_minus)) {
-        accept(TokenType::op_minus);
+        lead = std::make_unique<OperatorNode>(OperatorType::MINUS, accept(TokenType::op_minus)->start());
+        result->addChild(std::move(lead));
     }
-    term();
+    auto left = term();
+    unique_ptr<OperatorNode> op = nullptr;
+    unique_ptr<Node> right = nullptr;
     while(expect(TokenType::op_plus) or expect(TokenType::op_minus) or expect(TokenType::op_or)) {
         if(expect(TokenType::op_plus)) {
-            accept(TokenType::op_plus);
-            term();
+            op = std::make_unique<OperatorNode>(OperatorType::PLUS, accept(TokenType::op_plus)->start());
+            right = term();
         }
         else if(expect(TokenType::op_minus)) {
-            accept(TokenType::op_minus);
-            term();
+            op = std::make_unique<OperatorNode>(OperatorType::MINUS, accept(TokenType::op_minus)->start());
+            right = term();
         }
         else if(expect(TokenType::op_or)) {
-            accept(TokenType::op_or);
-            term();
+            op = std::make_unique<OperatorNode>(OperatorType::OR, accept(TokenType::op_or)->start());
+            right = term();
         }
     }
+    if (lead != nullptr) {
+        result->addChild(std::move(lead));
+        result->addChild(std::move(left));
+        if (op != nullptr) {
+            result->addChild(std::move(op));
+            result->addChild(std::move(right));
+            return result;
+        }
+        return result;
+    }
+    if(op != nullptr) {
+        result->addChild(std::move(left));
+        result->addChild(std::move(op));
+        result->addChild(std::move(right));
+        return result;
+    }
+    return left;
 }
 
-void Parser::term() {
-    factor();
+std::unique_ptr<Node> Parser::term() {
+    auto result = std::make_unique<Node>(NodeType::expression, scanner_.peek()->start());
+    auto left = factor();
+    unique_ptr<OperatorNode> op = nullptr;
+    unique_ptr<Node> right = nullptr;
     while(expect(TokenType::op_times) or expect(TokenType::op_div) or expect(TokenType::op_mod) or expect(TokenType::op_and)) {
         if(expect(TokenType::op_times)) {
-            accept(TokenType::op_times);
-            factor();
+            op = std::make_unique<OperatorNode>(OperatorType::TIMES, accept(TokenType::op_times)->start());
+            right = factor();
         }
         else if(expect(TokenType::op_div)) {
-            accept(TokenType::op_div);
-            factor();
+            op = std::make_unique<OperatorNode>(OperatorType::DIV, accept(TokenType::op_div)->start());
+            right = factor();
         }
         else if(expect(TokenType::op_mod)) {
-            accept(TokenType::op_mod);
-            factor();
+            op = std::make_unique<OperatorNode>(OperatorType::MOD, accept(TokenType::op_mod)->start());
+            right = factor();
         }
         else if(expect(TokenType::op_and)) {
-            accept(TokenType::op_and);
-            factor();
+            op = std::make_unique<OperatorNode>(OperatorType::AND, accept(TokenType::op_and)->start());
+            right = factor();
         }
     }
+    if (op != nullptr) {
+        result->addChild(std::move(left));
+        result->addChild(std::move(op));
+        result->addChild(std::move(right));
+        return result;
+    }
+    return left;
 }
 
-void Parser::factor() {
+std::unique_ptr<Node> Parser::factor() {
+    auto result = std::make_unique<Node>(NodeType::expression, scanner_.peek()->start());
     if(expect(TokenType::const_ident)) {
-        ident();
-        selector();
+        // factor is an identifier with selectors
+        result->addChild(ident());
+        auto sel = selector();
+        if (sel != nullptr) result->addChild(std::move(sel));
     }
     else if(expect(TokenType::lparen)) {
+        // factor is an expressionNode with no leading operator
         accept(TokenType::lparen);
-        expression();
+        auto res = expression();
         accept(TokenType::rparen);
+        return res;
     }
     else if(expect(TokenType::op_not)) {
-        accept(TokenType::op_not);
-        factor();
+        // factor is an expressionNode with a leading not
+        auto op = std::make_unique<OperatorNode>(OperatorType::NOT, accept(TokenType::op_not)->start());
+        result->addChild(std::move(op));
+        result->addChild(factor());
     }
     else {
-        long val;
-        number(&val);
+        // factor is a number literal
+        return number();
     }
+    return result;
 }
 
-void Parser::selector() {
+// returns null if there are no selectors
+std::unique_ptr<Node> Parser::selector() {
     bool empty = true;
+    auto result = std::make_unique<Node>(NodeType::selector_block, scanner_.peek()->start());
     while(expect(TokenType::period) or expect(TokenType::lbrack)) {
         empty = false;
         if(expect(TokenType::period)) {
-            accept(TokenType::period);
-            ident();
+            result->addChild(std::make_unique<Node>(NodeType::sel_field, accept(TokenType::period)->start()));
+            result->addChild(ident());
         }
         else {
-            accept(TokenType::lbrack);
-            expression();
+            result->addChild(std::make_unique<Node>(NodeType::sel_index, accept(TokenType::lbrack)->start()));
+            result->addChild(expression());
             accept(TokenType::rbrack);
         }
     }
@@ -407,4 +522,6 @@ void Parser::selector() {
         and not expect(TokenType::comma)) {
         logger_.error(scanner_.peek()->start(), "unexpected token after selector");
     }
+    if (!empty) return result;
+    return nullptr;
 }

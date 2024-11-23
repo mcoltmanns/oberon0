@@ -9,6 +9,9 @@
 
 
 #include <string>
+
+#include "ast/IdentNode.h"
+#include "ast/LiteralNode.h"
 #include "scanner/Scanner.h"
 #include "ast/Node.h"
 
@@ -20,41 +23,41 @@ private:
     Scanner &scanner_;
     Logger &logger_;
 
-    const string ident();
+    unique_ptr<IdentNode> ident();
 
-    bool number(long * out);
+    unique_ptr<LiteralNode> number();
 
-    void module();
+    std::unique_ptr<Node> module();
 
-    void declarations();
+    std::unique_ptr<Node> declarations();
 
-    void formalParameters();
+    std::unique_ptr<Node> formalParameters();
 
-    void type();
+    std::unique_ptr<Node> type();
 
-    void identList();
+    std::unique_ptr<Node> identList();
 
-    void statementSequence();
+    std::unique_ptr<Node> statementSequence();
 
-    void statement();
+    std::unique_ptr<Node> statement();
 
-    void assignmentOrProcedureCall();
+    std::unique_ptr<Node> assignmentOrProcedureCall();
 
-    void ifStatement();
+    std::unique_ptr<Node> ifStatement();
 
-    void whileStatement();
+    std::unique_ptr<Node> whileStatement();
 
-    void repeatStatement();
+    std::unique_ptr<Node> repeatStatement();
 
-    void expression();
+    std::unique_ptr<Node> expression();
 
-    void simpleExpression();
+    std::unique_ptr<Node> simpleExpression();
 
-    void term();
+    std::unique_ptr<Node> term();
 
-    void factor();
+    std::unique_ptr<Node> factor();
 
-    void selector();
+    std::unique_ptr<Node> selector();
 
 public:
     explicit Parser(Scanner &scanner, Logger &logger) : scanner_(scanner), logger_(logger) {};

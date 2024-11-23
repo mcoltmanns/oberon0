@@ -45,13 +45,12 @@ public:
             type_(type), start_(start), end_(end) { };
     virtual ~Token();
 
-    [[nodiscard]] TokenType type() const;
-    [[nodiscard]] FilePos start() const;
-    [[nodiscard]] FilePos end() const;
+    [[nodiscard]] virtual TokenType type() const;
+    [[nodiscard]] virtual FilePos start() const;
+    [[nodiscard]] virtual FilePos end() const;
 
     virtual void print(std::ostream &stream) const;
     friend std::ostream& operator<<(std::ostream &stream, const Token &symbol);
-
 };
 
 

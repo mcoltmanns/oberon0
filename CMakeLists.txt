@@ -56,10 +56,16 @@ set(SCANNER_SOURCES
 set(PARSER_SOURCES
         parser/Parser.h
         parser/ast/Node.cpp parser/ast/Node.h
-        parser/ast/NodeVisitor.cpp parser/ast/NodeVisitor.h)
+        parser/ast/NodeVisitor.cpp parser/ast/NodeVisitor.h
+        parser/Parser.cpp
+        parser/ast/OperatorNode.cpp
+        parser/ast/OperatorNode.h
+        parser/ast/IdentNode.cpp
+        parser/ast/IdentNode.h
+        parser/ast/LiteralNode.cpp
+        parser/ast/LiteralNode.h)
 
-set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES}
-        parser/Parser.cpp)
+set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES})
 
 add_executable(${OBERON0_C} main.cpp ${ALL_SOURCES})
 
