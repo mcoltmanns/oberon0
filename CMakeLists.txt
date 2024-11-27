@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 3.30)
 
 set(OBERON0_C "oberon0c")
 project(${OBERON0_C} VERSION 0.0.1)
@@ -23,11 +23,6 @@ endif ()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
-# make Boost work with CMake >= 3.30.0
-if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
-    cmake_policy(SET CMP0167 NEW)
-endif ()
 
 # define DEBUG macro
 if (CMAKE_BUILD_TYPE MATCHES Debug)

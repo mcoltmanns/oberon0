@@ -6,7 +6,6 @@
 
 #include <iostream>
 #include <string>
-
 #include "parser/Parser.h"
 #include "scanner/Scanner.h"
 
@@ -20,7 +19,7 @@ int main(const int argc, const char *argv[]) {
         cerr << "Usage: oberon0c <filename>" << endl;
         exit(1);
     }
-    string filename = argv[1];
+    path filename = argv[1];
     Logger logger;
     logger.setLevel(LogLevel::DEBUG);
     Scanner scanner(filename, logger);
