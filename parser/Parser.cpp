@@ -4,13 +4,16 @@
 
 #include "Parser.h"
 
+#include <cstring>
 #include <valarray>
 
 #include "global.h"
 #include "ast/IdentNode.h"
 #include "ast/LiteralNode.h"
 #include "ast/OperatorNode.h"
+#include "ast/visitor/NodeVisitor.h"
 #include "scanner/IdentToken.h"
+#include "symbol_table/SymbolTable.h"
 
 
 unique_ptr<IdentNode> Parser::ident() {
@@ -62,18 +65,26 @@ unique_ptr<const Token> Parser::accept(TokenType token) {
     stringstream ss;
     ss << "expected " << token << " but got " << scanner_.peek()->type() << " instead";
     logger_.error(scanner_.peek()->start(), ss.str());
-    return nullptr;
+    //return nullptr;
+    printf("Compilation failed!\n");
+    exit(EXIT_FAILURE); // this is lazy. in theory returning nullptrs would allow us to continue looking for errors but that needs more null checks. TODO later!
 }
 
 void Parser::parse() {
-    while(expect(TokenType::kw_module)) {
+    /*while(expect(TokenType::kw_module)) {
         module()->print(cout);
     }
-    accept(TokenType::eof);
+    accept(TokenType::eof);*/
+    auto mod = std::make_shared<Node>(*module());
+    mod->print(cout);
+    auto visitor = NodeVisitor(mod);
+    auto table = SymbolTable(visitor, logger_);
+    table.print(cout);
 }
 
 std::unique_ptr<Node> Parser::module() {
-    auto result = std::make_unique<Node>(NodeType::module, accept(TokenType::kw_module)->start());
+    auto result = std::make_unique<Node>(NodeType::module, scanner_.peek()->start()); // peek then accept - this makes it so that we never try to dereference a nullptr
+    accept(TokenType::kw_module);
     result->addChild(ident());
     accept(TokenType::semicolon);
     result->addChild(declarations());
@@ -375,78 +386,53 @@ std::unique_ptr<Node> Parser::simpleExpression() {
     unique_ptr<OperatorNode> lead = nullptr;
     if(expect(TokenType::op_plus)) {
         lead = std::make_unique<OperatorNode>(OperatorType::PLUS, accept(TokenType::op_plus)->start());
-        result->addChild(std::move(lead));
     }
     else if(expect(TokenType::op_minus)) {
         lead = std::make_unique<OperatorNode>(OperatorType::MINUS, accept(TokenType::op_minus)->start());
+    }
+    if (lead != nullptr) {
         result->addChild(std::move(lead));
     }
-    auto left = term();
+    result->addChild(term());
     unique_ptr<OperatorNode> op = nullptr;
     unique_ptr<Node> right = nullptr;
     while(expect(TokenType::op_plus) or expect(TokenType::op_minus) or expect(TokenType::op_or)) {
         if(expect(TokenType::op_plus)) {
             op = std::make_unique<OperatorNode>(OperatorType::PLUS, accept(TokenType::op_plus)->start());
-            right = term();
         }
         else if(expect(TokenType::op_minus)) {
             op = std::make_unique<OperatorNode>(OperatorType::MINUS, accept(TokenType::op_minus)->start());
-            right = term();
         }
         else if(expect(TokenType::op_or)) {
             op = std::make_unique<OperatorNode>(OperatorType::OR, accept(TokenType::op_or)->start());
-            right = term();
         }
-    }
-    if (lead != nullptr) {
-        result->addChild(std::move(lead));
-        result->addChild(std::move(left));
-        if (op != nullptr) {
-            result->addChild(std::move(op));
-            result->addChild(std::move(right));
-            return result;
-        }
-        return result;
-    }
-    if(op != nullptr) {
-        result->addChild(std::move(left));
         result->addChild(std::move(op));
-        result->addChild(std::move(right));
-        return result;
+        result->addChild(term());
     }
-    return left;
+    return result;
 }
 
 std::unique_ptr<Node> Parser::term() {
     auto result = std::make_unique<Node>(NodeType::expression, scanner_.peek()->start());
-    auto left = factor();
+    result->addChild(factor());
     unique_ptr<OperatorNode> op = nullptr;
-    unique_ptr<Node> right = nullptr;
     while(expect(TokenType::op_times) or expect(TokenType::op_div) or expect(TokenType::op_mod) or expect(TokenType::op_and)) {
         if(expect(TokenType::op_times)) {
             op = std::make_unique<OperatorNode>(OperatorType::TIMES, accept(TokenType::op_times)->start());
-            right = factor();
         }
         else if(expect(TokenType::op_div)) {
             op = std::make_unique<OperatorNode>(OperatorType::DIV, accept(TokenType::op_div)->start());
-            right = factor();
         }
         else if(expect(TokenType::op_mod)) {
             op = std::make_unique<OperatorNode>(OperatorType::MOD, accept(TokenType::op_mod)->start());
-            right = factor();
         }
         else if(expect(TokenType::op_and)) {
             op = std::make_unique<OperatorNode>(OperatorType::AND, accept(TokenType::op_and)->start());
-            right = factor();
         }
-    }
-    if (op != nullptr) {
-        result->addChild(std::move(left));
         result->addChild(std::move(op));
-        result->addChild(std::move(right));
-        return result;
+        result->addChild(factor());
     }
-    return left;
+    return result;
 }
 
 std::unique_ptr<Node> Parser::factor() {
