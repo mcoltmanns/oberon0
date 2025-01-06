@@ -9,7 +9,7 @@
 
 class Type : public Symbol {
 public:
-    Type(std::string name, FilePos pos) : Symbol(name, pos) {}
+    Type(std::string name, FilePos pos, int offset) : Symbol(name, pos, offset) {}
 
     explicit Type(const char * str) : Symbol(str) {
         pos_ = {"BASETYPE", 0, 0, 0 };

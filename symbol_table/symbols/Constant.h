@@ -13,7 +13,7 @@ private:
     long value_;
 
 public:
-    Constant(std::string name, const long value, FilePos pos) : Symbol(std::move(name), std::move(pos)), value_(value) {}
+    Constant(std::string name, const long value, FilePos pos, int offset) : Symbol(std::move(name), std::move(pos), offset), value_(value) {}
 
     [[nodiscard]] long getValue() const { return value_; }
     void print(std::ostream &s) override;

@@ -17,7 +17,7 @@ private:
     SymbolTable locals_;
 
 public:
-    Procedure(const std::string &name, const FilePos &pos, const SymbolTable *parent_scope, const Node& procedure_node);
+    Procedure(const std::string &name, const FilePos &pos, const SymbolTable *parent_scope, const Node& procedure_node, int offset);
 
     void print(std::ostream& s) override;
 };

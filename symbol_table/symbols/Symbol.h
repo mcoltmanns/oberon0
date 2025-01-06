@@ -15,10 +15,11 @@ class Symbol {
 protected:
     std::string name_;
     FilePos pos_;
+    int offset_;
 
 public:
-    Symbol(std::string name, FilePos pos) : name_(std::move(name)), pos_(std::move(pos)) {}
-    Symbol(std::string name) : name_(std::move(name)), pos_() {}
+    Symbol(std::string name, FilePos pos, const int offset) : name_(std::move(name)), pos_(std::move(pos)), offset_(offset) {}
+    Symbol(std::string name) : name_(std::move(name)), pos_(), offset_() {}
     virtual ~Symbol() = default;
 
     [[nodiscard]] std::unique_ptr<string> getName() const;

@@ -13,7 +13,7 @@ private:
     std::unordered_map<std::string, Type&> fields_;
 
 public:
-    RecordType(std::string name, FilePos pos) : Type(name, pos) {}
+    RecordType(std::string name, FilePos pos, int offset) : Type(name, pos, offset) {}
 
     std::unordered_map<std::string, Type&>& fields() { return fields_; }
 };
@@ -24,7 +24,7 @@ private:
     std::string base_type_name_;
 
 public:
-    ArrayType(std::string name, int length, std::string base_type_name, FilePos pos) : Type(name, pos), length_(length), base_type_name_(std::move(base_type_name)) {}
+    ArrayType(std::string name, int length, std::string base_type_name, FilePos pos, int offset) : Type(name, pos, offset), length_(length), base_type_name_(std::move(base_type_name)) {}
 
     int length() const { return length_; }
     std::string base_type() const { return base_type_name_; } // FIXME: unsafe pointers

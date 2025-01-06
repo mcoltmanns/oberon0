@@ -79,7 +79,8 @@ void Parser::parse() {
     mod->print(cout);
     auto visitor = NodeVisitor(mod);
     auto table = SymbolTable(logger_);
-    table.insert(mod);
+    int offset = 0;
+    table.insert(mod, &offset);
     table.print(cout);
 }
 

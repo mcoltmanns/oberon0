@@ -10,7 +10,7 @@
 
 class Module final : public Symbol {
 public:
-    Module(std::string name, FilePos pos) : Symbol(std::move(name), std::move(pos)) {}
+    Module(std::string name, FilePos pos, int offset) : Symbol(std::move(name), std::move(pos), offset) {}
 
     void print(std::ostream &s) override;
 };
