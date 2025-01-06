@@ -27,21 +27,22 @@ class NodeVisitor;
 class Node {
 
 private:
-    std::vector<std::unique_ptr<Node>> children_ {}; // order matters!
+    std::vector<std::shared_ptr<Node>> children_ {}; // order matters!
     // and this should be private because the only nodes that inherit this class are terminals, which have no children
+    // and should be shared because the syntax tree might need to be accessed by multiple things
 
 protected:
     NodeType nodeType_;
     FilePos pos_;
 
 public:
-    explicit Node(const NodeType nodeType, FilePos pos) : nodeType_(nodeType), pos_(std::move(pos)) { };
+    explicit Node(const NodeType nodeType, FilePos pos) : nodeType_(nodeType), pos_(std::move(pos)) { }
     virtual ~Node();
 
-    [[nodiscard]] NodeType getNodeType() const;
+    [[nodiscard]] NodeType type() const;
     [[nodiscard]] FilePos pos() const;
 
-    std::vector<std::unique_ptr<Node>> const &children() const;
+    [[nodiscard]] std::vector<std::shared_ptr<Node>> const &children() const;
     void addChild(std::unique_ptr<Node> child);
 
     //virtual void accept(NodeVisitor &visitor) = 0;

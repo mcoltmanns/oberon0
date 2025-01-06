@@ -78,7 +78,8 @@ void Parser::parse() {
     auto mod = std::make_shared<Node>(*module());
     mod->print(cout);
     auto visitor = NodeVisitor(mod);
-    auto table = SymbolTable(visitor, logger_);
+    auto table = SymbolTable(logger_);
+    table.insert(mod);
     table.print(cout);
 }
 

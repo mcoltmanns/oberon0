@@ -8,7 +8,7 @@
 
 Node::~Node() = default;
 
-NodeType Node::getNodeType() const {
+NodeType Node::type() const {
     return nodeType_;
 }
 
@@ -16,7 +16,7 @@ FilePos Node::pos() const {
     return pos_;
 }
 
-std::vector<std::unique_ptr<Node>> const &Node::children() const {
+std::vector<std::shared_ptr<Node>> const &Node::children() const {
     return children_;
 }
 

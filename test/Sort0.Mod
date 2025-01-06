@@ -2,11 +2,13 @@
 MODULE Sort0;
 
 (* Length of the array to be sorted. *)
-CONST Dim = 2 * 10;
-anotherConstant = 4;
+CONST Dim = 1 + 2 * 3 + 4;
+anotherConstant = + 4;
 
 (* Array type *)
 TYPE INTARRAY = ARRAY Dim OF INTEGER;
+
+TESTRECORD = RECORD foo, bar : INTEGER; bizz : BOOLEAN END;
 
 (* Array to be sorted. *)
 VAR a: INTARRAY;

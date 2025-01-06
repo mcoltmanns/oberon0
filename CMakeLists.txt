@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.29.6)
 
 set(OBERON0_C "oberon0c")
 project(${OBERON0_C} VERSION 0.0.1)
@@ -51,7 +51,7 @@ set(SCANNER_SOURCES
 set(PARSER_SOURCES
         parser/Parser.h
         parser/ast/Node.cpp parser/ast/Node.h
-        parser/ast/NodeVisitor.cpp parser/ast/NodeVisitor.h
+        parser/ast/visitor/NodeVisitor.cpp parser/ast/visitor/NodeVisitor.h
         parser/Parser.cpp
         parser/ast/OperatorNode.cpp
         parser/ast/OperatorNode.h
@@ -60,7 +60,27 @@ set(PARSER_SOURCES
         parser/ast/LiteralNode.cpp
         parser/ast/LiteralNode.h)
 
-set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES})
+set(SYMTBL_SOURCES
+        symbol_table/symbols/types/BaseTypes.cpp
+        symbol_table/symbols/types/BaseTypes.h
+        symbol_table/symbols/types/ConstructedTypes.cpp
+        symbol_table/symbols/types/ConstructedTypes.h
+        symbol_table/symbols/types/Type.cpp
+        symbol_table/symbols/types/Type.h
+        symbol_table/symbols/Constant.cpp
+        symbol_table/symbols/Constant.h
+        symbol_table/symbols/Procedure.cpp
+        symbol_table/symbols/Procedure.h
+        symbol_table/symbols/Symbol.cpp
+        symbol_table/symbols/Symbol.h
+        symbol_table/symbols/Variable.cpp
+        symbol_table/symbols/Variable.h
+        symbol_table/symbols/Module.cpp
+        symbol_table/symbols/Module.h
+        symbol_table/SymbolTable.cpp
+        symbol_table/SymbolTable.h)
+
+set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES} ${SYMTBL_SOURCES})
 
 add_executable(${OBERON0_C} main.cpp ${ALL_SOURCES})
 
