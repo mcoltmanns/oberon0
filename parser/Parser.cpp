@@ -18,7 +18,8 @@
 
 unique_ptr<IdentNode> Parser::ident() {
     auto start = scanner_.peek()->start();
-    const Token* tokenPtr = accept(TokenType::const_ident).get(); // token is IdentToken : Token
+    const auto token = accept(TokenType::const_ident);
+    const Token* tokenPtr = token.get(); // token is IdentToken : Token
     // this is dangerous! but dynamic_cast causes sigsegv.
     // even in this form not totally safe. crashes in funny ways sometimes if compilation fails
     // we can be sure that we always end up with a value field, because the accept() call guarantees it
@@ -43,7 +44,8 @@ unique_ptr<LiteralNode> Parser::number() {
     // again, very dangerous! but like in ident(), dynamic cast does not work
     // we throw every number into a long because this is a modern compiler!
     // with access to modern hardware on which we can store as many longs as we want!
-    const Token* tokenPtr = scanner_.next().get();
+    const auto token = scanner_.next();
+    const Token* tokenPtr = token.get();
     long val = static_cast<const LiteralToken<long>*>(tokenPtr)->value();
     return std::make_unique<LiteralNode>(val, start);
 }
@@ -87,15 +89,15 @@ void Parser::parse() {
 std::unique_ptr<Node> Parser::module() {
     auto result = std::make_unique<Node>(NodeType::module, scanner_.peek()->start()); // peek then accept - this makes it so that we never try to dereference a nullptr
     accept(TokenType::kw_module);
-    result->addChild(ident());
+    result->append_child(ident());
     accept(TokenType::semicolon);
-    result->addChild(declarations());
+    result->append_child(declarations());
     if(expect(TokenType::kw_begin)) {
         accept(TokenType::kw_begin);
-        result->addChild(statementSequence());
+        result->append_child(statementSequence());
     }
     accept(TokenType::kw_end);
-    result->addChild(ident());
+    result->append_child(ident());
     accept(TokenType::period);
     return result;
 }
@@ -108,11 +110,11 @@ std::unique_ptr<Node> Parser::declarations() {
         accept(TokenType::kw_const);
         while(expect(TokenType::const_ident)) {
             auto constant = std::make_unique<Node>(NodeType::dec_const, scanner_.peek()->start());
-            constant->addChild(ident());
+            constant->append_child(ident());
             accept(TokenType::op_eq);
-            constant->addChild(expression());
+            constant->append_child(expression());
             accept(TokenType::semicolon);
-            result->addChild(std::move(constant));
+            result->append_child(std::move(constant));
         }
     }
     if(expect(TokenType::kw_type)) {
@@ -120,11 +122,11 @@ std::unique_ptr<Node> Parser::declarations() {
         accept(TokenType::kw_type);
         while(expect(TokenType::const_ident)) {
             auto typedec = std::make_unique<Node>(NodeType::dec_type, scanner_.peek()->start());
-            typedec->addChild(ident());
+            typedec->append_child(ident());
             accept(TokenType::op_eq);
-            typedec->addChild(type());
+            typedec->append_child(type());
             accept(TokenType::semicolon);
-            result->addChild(std::move(typedec));
+            result->append_child(std::move(typedec));
         }
     }
     if(expect(TokenType::kw_var)) {
@@ -132,30 +134,30 @@ std::unique_ptr<Node> Parser::declarations() {
         accept(TokenType::kw_var);
         while(expect(TokenType::const_ident)) {
             auto var = std::make_unique<Node>(NodeType::dec_var, scanner_.peek()->start());
-            var->addChild(identList());
+            var->append_child(identList());
             accept(TokenType::colon);
-            var->addChild(type());
+            var->append_child(type());
             accept(TokenType::semicolon);
-            result->addChild(std::move(var));
+            result->append_child(std::move(var));
         }
     }
     while(expect(TokenType::kw_procedure)) {
         auto proc = std::make_unique<Node>(NodeType::dec_proc, accept(TokenType::kw_procedure)->start());
         empty = false;
-        proc->addChild(ident());
+        proc->append_child(ident());
         if(expect(TokenType::lparen)) {
-            proc->addChild(formalParameters());
+            proc->append_child(formalParameters());
         }
         accept(TokenType::semicolon);
-        proc->addChild(declarations());
+        proc->append_child(declarations());
         if(expect(TokenType::kw_begin)) {
             accept(TokenType::kw_begin);
-            proc->addChild(statementSequence());
+            proc->append_child(statementSequence());
         }
         accept(TokenType::kw_end);
-        proc->addChild(ident());
+        proc->append_child(ident());
         accept(TokenType::semicolon);
-        result->addChild(std::move(proc));
+        result->append_child(std::move(proc));
     }
     // applying e-prod? check follow
     if(empty and not expect(TokenType::kw_begin) and not expect(TokenType::kw_end)) {
@@ -172,10 +174,10 @@ std::unique_ptr<Node> Parser::formalParameters() {
             param = std::make_unique<Node>(NodeType::fp_reference, accept(TokenType::kw_var)->start());
         }
         else param = std::make_unique<Node>(NodeType::fp_copy, scanner_.peek()->start());
-        param->addChild(identList());
+        param->append_child(identList());
         accept(TokenType::colon);
-        param->addChild(type());
-        result->addChild(std::move(param));
+        param->append_child(type());
+        result->append_child(std::move(param));
         while(expect(TokenType::semicolon)) {
             accept(TokenType::semicolon);
             unique_ptr<Node> param;
@@ -183,10 +185,10 @@ std::unique_ptr<Node> Parser::formalParameters() {
                 param = std::make_unique<Node>(NodeType::fp_reference, accept(TokenType::kw_var)->start());
             }
             else param = std::make_unique<Node>(NodeType::fp_copy, scanner_.peek()->start());
-            param->addChild(identList());
+            param->append_child(identList());
             accept(TokenType::colon);
-            param->addChild(type());
-            result->addChild(std::move(param));
+            param->append_child(type());
+            result->append_child(std::move(param));
         }
     }
     accept(TokenType::rparen);
@@ -197,54 +199,54 @@ std::unique_ptr<Node> Parser::type() {
     unique_ptr<Node> result;
     if(expect(TokenType::kw_array)) {
         result = std::make_unique<Node>(NodeType::type_array, accept(TokenType::kw_array)->start());
-        result->addChild(expression());
+        result->append_child(expression());
         accept(TokenType::kw_of);
-        result->addChild(type());
+        result->append_child(type());
     }
     else if(expect(TokenType::kw_record)) {
         result = std::make_unique<Node>(NodeType::type_record, accept(TokenType::kw_record)->start());
         if(expect(TokenType::const_ident)) {
             auto fields = std::make_unique<Node>(NodeType::record_field_list, scanner_.peek()->start());
-            fields->addChild(identList());
+            fields->append_child(identList());
             accept(TokenType::colon);
-            fields->addChild(type());
-            result->addChild(std::move(fields));
+            fields->append_child(type());
+            result->append_child(std::move(fields));
         }
         while(expect(TokenType::semicolon)) {
             accept(TokenType::semicolon);
             if(expect(TokenType::const_ident)) {
                 auto fields = std::make_unique<Node>(NodeType::record_field_list, scanner_.peek()->start());
-                fields->addChild(identList());
+                fields->append_child(identList());
                 accept(TokenType::colon);
-                fields->addChild(type());
-                result->addChild(std::move(fields));
+                fields->append_child(type());
+                result->append_child(std::move(fields));
             }
         }
         accept(TokenType::kw_end);
     }
     else {
         result = std::make_unique<Node>(NodeType::type_raw, scanner_.peek()->start());
-        result->addChild(ident());
+        result->append_child(ident());
     }
     return result;
 }
 
 std::unique_ptr<Node> Parser::identList() {
     auto result = std::make_unique<Node>(NodeType::ident_list, scanner_.peek()->start());
-    result->addChild(ident());
+    result->append_child(ident());
     while(expect(TokenType::comma)) {
         accept(TokenType::comma);
-        result->addChild(ident());
+        result->append_child(ident());
     }
     return result;
 }
 
 std::unique_ptr<Node> Parser::statementSequence() {
     auto result = std::make_unique<Node>(NodeType::statement_seq, scanner_.peek()->start());
-    result->addChild(statement());
+    result->append_child(statement());
     while(expect(TokenType::semicolon)) {
         accept(TokenType::semicolon);
-        result->addChild(statement());
+        result->append_child(statement());
     }
     return result;
 }
@@ -278,25 +280,25 @@ std::unique_ptr<Node> Parser::assignmentOrProcedureCall() {
         // this is an assignment
         accept(TokenType::op_becomes);
         result = std::make_unique<Node>(NodeType::assignment, start);
-        result->addChild(std::move(identifier));
-        if (sel != nullptr) result->addChild(std::move(sel));
-        result->addChild(expression());
+        result->append_child(std::move(identifier));
+        if (sel != nullptr) result->append_child(std::move(sel));
+        result->append_child(expression());
     }
     else {
         // this is a procedure call
         // might there be parameters?
         result = std::make_unique<Node>(NodeType::proc_call, start);
-        result->addChild(std::move(identifier));
-        if (sel != nullptr) result->addChild(std::move(sel));
+        result->append_child(std::move(identifier));
+        if (sel != nullptr) result->append_child(std::move(sel));
         if(expect(TokenType::lparen)) {
             // there could be
             accept(TokenType::lparen);
             // not done immediately? there are parameters
             if(not expect(TokenType::rparen)) {
-                result->addChild(expression());
+                result->append_child(expression());
                 while(expect(TokenType::comma)) {
                     accept(TokenType::comma);
-                    result->addChild(expression());
+                    result->append_child(expression());
                 }
             }
             accept(TokenType::rparen);
@@ -307,22 +309,22 @@ std::unique_ptr<Node> Parser::assignmentOrProcedureCall() {
 
 std::unique_ptr<Node> Parser::ifStatement() {
     auto result = std::make_unique<Node>(NodeType::if_statement, accept(TokenType::kw_if)->start());
-    result->addChild(expression());
+    result->append_child(expression());
     accept(TokenType::kw_then);
-    result->addChild(statementSequence());
+    result->append_child(statementSequence());
     while(expect(TokenType::kw_elsif)) {
         auto elsif = std::make_unique<Node>(NodeType::if_alt, accept(TokenType::kw_elsif)->start());
         expression();
-        elsif->addChild(expression());
+        elsif->append_child(expression());
         accept(TokenType::kw_then);
-        elsif->addChild(statementSequence());
-        result->addChild(std::move(elsif));
+        elsif->append_child(statementSequence());
+        result->append_child(std::move(elsif));
     }
     if(expect(TokenType::kw_else)) {
         auto def = std::make_unique<Node>(NodeType::if_default, accept(TokenType::kw_else)->start());
-        def->addChild(statementSequence());
+        def->append_child(statementSequence());
         statementSequence();
-        result->addChild(std::move(def));
+        result->append_child(std::move(def));
     }
     accept(TokenType::kw_end);
     return result;
@@ -330,18 +332,18 @@ std::unique_ptr<Node> Parser::ifStatement() {
 
 std::unique_ptr<Node> Parser::whileStatement() {
     auto result = std::make_unique<Node>(NodeType::while_statement, accept(TokenType::kw_while)->start());
-    result->addChild(expression());
+    result->append_child(expression());
     accept(TokenType::kw_do);
-    result->addChild(statementSequence());
+    result->append_child(statementSequence());
     accept(TokenType::kw_end);
     return result;
 }
 
 std::unique_ptr<Node> Parser::repeatStatement() {
     const auto result = std::make_unique<Node>(NodeType::repeat_statement, accept(TokenType::kw_repeat)->start());
-    result->addChild(statementSequence());
+    result->append_child(statementSequence());
     accept(TokenType::kw_until);
-    result->addChild(expression());
+    result->append_child(expression());
     return std::make_unique<Node>(NodeType::unknown, scanner_.peek()->start());
 }
 
@@ -375,12 +377,12 @@ std::unique_ptr<Node> Parser::expression() {
         right = simpleExpression();
     }
     if (op != nullptr) {
-        result->addChild(std::move(left));
-        result->addChild(std::move(op));
-        result->addChild(std::move(right));
+        result->append_child(std::move(left));
+        result->append_child(std::move(op));
+        result->append_child(std::move(right));
         return result;
     }
-    return left;
+    return left; // only return the left side if there was no right side
 }
 
 std::unique_ptr<Node> Parser::simpleExpression() {
@@ -393,9 +395,9 @@ std::unique_ptr<Node> Parser::simpleExpression() {
         lead = std::make_unique<OperatorNode>(OperatorType::MINUS, accept(TokenType::op_minus)->start());
     }
     if (lead != nullptr) {
-        result->addChild(std::move(lead));
+        result->append_child(std::move(lead));
     }
-    result->addChild(term());
+    auto left = term();
     unique_ptr<OperatorNode> op = nullptr;
     unique_ptr<Node> right = nullptr;
     while(expect(TokenType::op_plus) or expect(TokenType::op_minus) or expect(TokenType::op_or)) {
@@ -408,15 +410,17 @@ std::unique_ptr<Node> Parser::simpleExpression() {
         else if(expect(TokenType::op_or)) {
             op = std::make_unique<OperatorNode>(OperatorType::OR, accept(TokenType::op_or)->start());
         }
-        result->addChild(std::move(op));
-        result->addChild(term());
+        result->append_child(std::move(op));
+        result->append_child(term());
     }
+    if (result->children().size() < 2) return left; // if there are less than 2 terms, return only the left one (prevents nested singletons)
+    result->prepend_child(std::move(left));
     return result;
 }
 
 std::unique_ptr<Node> Parser::term() {
     auto result = std::make_unique<Node>(NodeType::expression, scanner_.peek()->start());
-    result->addChild(factor());
+    auto left = factor();
     unique_ptr<OperatorNode> op = nullptr;
     while(expect(TokenType::op_times) or expect(TokenType::op_div) or expect(TokenType::op_mod) or expect(TokenType::op_and)) {
         if(expect(TokenType::op_times)) {
@@ -431,9 +435,11 @@ std::unique_ptr<Node> Parser::term() {
         else if(expect(TokenType::op_and)) {
             op = std::make_unique<OperatorNode>(OperatorType::AND, accept(TokenType::op_and)->start());
         }
-        result->addChild(std::move(op));
-        result->addChild(factor());
+        result->append_child(std::move(op));
+        result->append_child(factor());
     }
+    if (result->children().size() < 2) return left;
+    result->prepend_child(std::move(left));
     return result;
 }
 
@@ -441,9 +447,9 @@ std::unique_ptr<Node> Parser::factor() {
     auto result = std::make_unique<Node>(NodeType::expression, scanner_.peek()->start());
     if(expect(TokenType::const_ident)) {
         // factor is an identifier with selectors
-        result->addChild(ident());
+        result->append_child(ident());
         auto sel = selector();
-        if (sel != nullptr) result->addChild(std::move(sel));
+        if (sel != nullptr) result->append_child(std::move(sel));
     }
     else if(expect(TokenType::lparen)) {
         // factor is an expressionNode with no leading operator
@@ -455,8 +461,8 @@ std::unique_ptr<Node> Parser::factor() {
     else if(expect(TokenType::op_not)) {
         // factor is an expressionNode with a leading not
         auto op = std::make_unique<OperatorNode>(OperatorType::NOT, accept(TokenType::op_not)->start());
-        result->addChild(std::move(op));
-        result->addChild(factor());
+        result->append_child(std::move(op));
+        result->append_child(factor());
     }
     else {
         // factor is a number literal
@@ -472,12 +478,12 @@ std::unique_ptr<Node> Parser::selector() {
     while(expect(TokenType::period) or expect(TokenType::lbrack)) {
         empty = false;
         if(expect(TokenType::period)) {
-            result->addChild(std::make_unique<Node>(NodeType::sel_field, accept(TokenType::period)->start()));
-            result->addChild(ident());
+            result->append_child(std::make_unique<Node>(NodeType::sel_field, accept(TokenType::period)->start()));
+            result->append_child(ident());
         }
         else {
-            result->addChild(std::make_unique<Node>(NodeType::sel_index, accept(TokenType::lbrack)->start()));
-            result->addChild(expression());
+            result->append_child(std::make_unique<Node>(NodeType::sel_index, accept(TokenType::lbrack)->start()));
+            result->append_child(expression());
             accept(TokenType::rbrack);
         }
     }

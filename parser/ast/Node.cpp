@@ -20,8 +20,12 @@ std::vector<std::shared_ptr<Node>> const &Node::children() const {
     return children_;
 }
 
-void Node::addChild(std::unique_ptr<Node> child) {
+void Node::append_child(std::unique_ptr<Node> child) {
     children_.push_back(std::move(child));
+}
+
+void Node::prepend_child(std::unique_ptr<Node> child) {
+    children_.insert(children().begin(), std::move(child));
 }
 
 void Node::print(std::ostream &stream, long unsigned int tabs) const {

@@ -43,7 +43,9 @@ public:
     [[nodiscard]] FilePos pos() const;
 
     [[nodiscard]] std::vector<std::shared_ptr<Node>> const &children() const;
-    void addChild(std::unique_ptr<Node> child);
+    void append_child(std::unique_ptr<Node> child);
+
+    void prepend_child(std::unique_ptr<Node> child);
 
     //virtual void accept(NodeVisitor &visitor) = 0;
 
