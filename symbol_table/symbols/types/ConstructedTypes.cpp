@@ -3,3 +3,11 @@
 //
 
 #include "ConstructedTypes.h"
+
+ArrayType::~ArrayType() {
+
+}
+
+RecordType::~RecordType() {
+
+}

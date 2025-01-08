@@ -12,7 +12,8 @@
 #include <utility>
 #include <vector>
 
-#include "../../util/Logger.h"
+//#include "visitor/NodeVisitor.h"
+#include "global.h"
 
 enum class NodeType : char {
     op, ident, literal, module, declarations, dec_const, dec_type, dec_var, dec_proc, unknown, formal_parameters,
@@ -22,10 +23,7 @@ enum class NodeType : char {
 };
 std::ostream& operator<<(std::ostream &stream, NodeType nodeType);
 
-class NodeVisitor;
-
 class Node {
-
 private:
     std::vector<std::shared_ptr<Node>> children_ {}; // order matters!
     // and this should be private because the only nodes that inherit this class are terminals, which have no children
@@ -34,6 +32,7 @@ private:
 protected:
     NodeType nodeType_;
     FilePos pos_;
+    int visitCount_ = 0;
 
 public:
     explicit Node(const NodeType nodeType, FilePos pos) : nodeType_(nodeType), pos_(std::move(pos)) { }
@@ -47,7 +46,7 @@ public:
 
     void prepend_child(std::unique_ptr<Node> child);
 
-    //virtual void accept(NodeVisitor &visitor) = 0;
+    //virtual void accept(NodeVisitor &visitor) { visitor.visit(this); }
 
     friend std::ostream& operator<<(std::ostream &stream, const Node &node);
     virtual void print(std::ostream &stream, long unsigned int tabs = 0) const;

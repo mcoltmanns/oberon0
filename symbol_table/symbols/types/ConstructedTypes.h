@@ -13,21 +13,23 @@ private:
     std::unordered_map<std::string, Type&> fields_;
 
 public:
-    RecordType(std::string name, FilePos pos, int offset) : Type(name, pos, offset) {}
+    RecordType(std::string name, FilePos pos, int size) : Type(name, pos, size) {}
+    virtual ~RecordType();
 
     std::unordered_map<std::string, Type&>& fields() { return fields_; }
 };
 
 class ArrayType : public Type {
 private:
-    int length_;
+    int length_; // how many things are in this array. NOT the same as size!
     std::string base_type_name_;
 
 public:
-    ArrayType(std::string name, int length, std::string base_type_name, FilePos pos, int offset) : Type(name, pos, offset), length_(length), base_type_name_(std::move(base_type_name)) {}
+    ArrayType(std::string name, int length, std::string base_type_name, FilePos pos, int size) : Type(name, pos, size), length_(length), base_type_name_(std::move(base_type_name)) {}
+    virtual ~ArrayType();
 
     int length() const { return length_; }
-    std::string base_type() const { return base_type_name_; } // FIXME: unsafe pointers
+    std::string base_type() const { return base_type_name_; }
 };
 
 #endif //CONSTRUCTEDTYPES_H

@@ -6,18 +6,15 @@
 #define PROCEDURE_H
 
 #include "Symbol.h"
-#include "symbol_table/SymbolTable.h"
+#include "parser/ast/Node.h"
 
-// procedures should have two symbol tables: one for parameters, and one for local vars
-// and a reference to their parent scope/symbol table
 class Procedure final : public Symbol {
 private:
-    const SymbolTable *parent_scope_;
-    SymbolTable params_;
-    SymbolTable locals_;
+    int calc_ar_size();
+    Node* procedure_node_;
 
 public:
-    Procedure(const std::string &name, const FilePos &pos, const SymbolTable *parent_scope, const Node& procedure_node, int offset);
+    Procedure(const std::string &name, const FilePos &pos, Node *procedure_node);
 
     void print(std::ostream& s) override;
 };

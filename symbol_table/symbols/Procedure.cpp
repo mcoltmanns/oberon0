@@ -4,13 +4,13 @@
 
 #include "Procedure.h"
 
-Procedure::Procedure(const std::string &name, const FilePos &pos, const SymbolTable* parent_scope, const Node& procedure_node, int offset): Symbol(name, pos, offset),
-    parent_scope_(parent_scope), params_(parent_scope->logger_), locals_(parent_scope->logger_) {
-    // fill maps with requisite info
-    // procedure node's chidren are: identifier, parameters
-    printf("%lu", procedure_node.children().size());
+Procedure::Procedure(const std::string &name, const FilePos &pos, Node* procedure_node): Symbol(name, pos, calc_ar_size()), procedure_node_(procedure_node) {
 }
 
 void Procedure::print(std::ostream& s) {
-    s << "Procedure " << name_ << " declared at " << pos_.fileName << ":" << pos_.lineNo << ":" << pos_.charNo;
+    s << "PROCEDURE " << name_ << " with AR SIZE " << size_ << " declared at " << pos_.fileName << ":" << pos_.lineNo << ":" << pos_.charNo;
+}
+
+int Procedure::calc_ar_size() {
+    return 1;
 }

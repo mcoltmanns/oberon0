@@ -6,20 +6,29 @@
 #define INTEGERTYPE_H
 #include "Type.h"
 
-
+// for now we assume all base types take up 1 cell in storage
 class IntegerType : public Type {
 public:
-    explicit IntegerType() : Type("integer") {};
+    explicit IntegerType() : Type("INTEGER", 1) {};
+    virtual ~IntegerType();
+
+    void print(std::ostream& s) override;
 };
 
 class StringType : public Type {
 public:
-    explicit StringType() : Type("string") {};
+    explicit StringType() : Type("STRING", 1) {};
+    virtual ~StringType();
+
+    void print(std::ostream& s) override;
 };
 
 class BooleanType : public Type {
 public:
-    explicit BooleanType() : Type("boolean") {};
+    explicit BooleanType() : Type("BOOLEAN", 1) {};
+    virtual ~BooleanType();
+
+    void print(std::ostream& s) override;
 };
 
 

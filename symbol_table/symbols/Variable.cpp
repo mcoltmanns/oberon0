@@ -5,5 +5,5 @@
 #include "Variable.h"
 
 void Variable::print(std::ostream& s) {
-    s << "Variable " << name_ << " with type " << type_name_ << " declared at " << pos_.fileName << ":" << pos_.lineNo << ":" << pos_.charNo;
+    s << "VARIABLE \"" << name_ << "\" of TYPE \"" << type_name_ << "\" and SIZE " << size_ << " declared at " << pos_.fileName << ":" << pos_.lineNo << ":" << pos_.charNo;
 }

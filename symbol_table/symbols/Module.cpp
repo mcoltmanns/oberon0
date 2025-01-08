@@ -5,5 +5,5 @@
 #include "Module.h"
 
 void Module::print(std::ostream &s) {
-    s << "Module " << name_ << " at " << pos_.fileName << ": " << pos_.lineNo << ":" << pos_.charNo;
+    s << "MODULE " << name_ << " declared at " << pos_.fileName << ": " << pos_.lineNo << ":" << pos_.charNo;
 }

@@ -10,17 +10,18 @@
 
 #include "global.h"
 
-
 class Symbol {
 protected:
     std::string name_;
     FilePos pos_;
-    int offset_;
 
 public:
-    Symbol(std::string name, FilePos pos, const int offset) : name_(std::move(name)), pos_(std::move(pos)), offset_(offset) {}
-    Symbol(std::string name) : name_(std::move(name)), pos_(), offset_() {}
-    virtual ~Symbol() = default;
+    int size_; // how many memory units does this thing take up?
+
+    Symbol(std::string name, FilePos pos, const int size) : name_(std::move(name)), pos_(std::move(pos)), size_(size) {}
+    explicit Symbol(std::string name, int size) : name_(std::move(name)), pos_(), size_(size) {}
+
+    virtual ~Symbol();
 
     [[nodiscard]] std::unique_ptr<string> getName() const;
 

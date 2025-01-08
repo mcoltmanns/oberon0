@@ -9,11 +9,12 @@
 
 class Type : public Symbol {
 public:
-    Type(std::string name, FilePos pos, int offset) : Symbol(name, pos, offset) {}
+    Type(std::string name, FilePos pos, int size) : Symbol(name, pos, size) {}
+    explicit Type(std::string name, int size);
 
-    explicit Type(const char * str) : Symbol(str) {
-        pos_ = {"BASETYPE", 0, 0, 0 };
-    };
+    virtual ~Type(); // these destructors must be defined and out of line, otherwise clang bitches about the vtable (clang really likes to complain!)
+
+    virtual void print(std::ostream &s) override;
 };
 
 

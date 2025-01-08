@@ -79,10 +79,10 @@ void Parser::parse() {
     accept(TokenType::eof);*/
     auto mod = std::make_shared<Node>(*module());
     mod->print(cout);
-    auto visitor = NodeVisitor(mod);
     auto table = SymbolTable(logger_);
-    int offset = 0;
-    table.insert(mod, &offset);
+    auto visitor = DecNodeVisitor(table, logger_);
+    visitor.visit(mod->children().at(1)->children().front().get());
+    visitor.visit(mod->children().at(1)->children().at(1).get());
     table.print(cout);
 }
 
