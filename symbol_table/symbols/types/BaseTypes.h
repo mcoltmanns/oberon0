@@ -31,5 +31,10 @@ public:
     void print(std::ostream& s) override;
 };
 
+// global basic types - these are static and should NEVER! be declared anywhere else
+static auto BASIC_TYPE_INT = static_cast<Symbol>(IntegerType());
+static auto BASIC_TYPE_STRING = static_cast<Symbol>(StringType());
+static auto BASIC_TYPE_BOOL = static_cast<Symbol>(BooleanType());
+
 
 #endif //INTEGERTYPE_H
