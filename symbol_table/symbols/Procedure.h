@@ -7,16 +7,17 @@
 
 #include "Symbol.h"
 #include "parser/ast/Node.h"
+#include "symbol_table/Scope.h"
 
 class Procedure final : public Symbol {
 private:
-    int calc_ar_size();
-    Node* procedure_node_;
+    std::shared_ptr<Node> sseq_node_; // which statement sequence does this procedure execute?
+    std::shared_ptr<Scope> scope_;
 
 public:
-    Procedure(const std::string &name, const FilePos &pos, Node *procedure_node);
+    Procedure(std::string name, const FilePos &pos, std::shared_ptr<Node> sseq_node, std::shared_ptr<Scope> procedure_scope);
 
-    void print(std::ostream& s) override;
+    void print(std::ostream &s, int tabs) override;
 };
 
 

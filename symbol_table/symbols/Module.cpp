@@ -4,6 +4,12 @@
 
 #include "Module.h"
 
-void Module::print(std::ostream &s) {
-    s << "MODULE " << name_ << " declared at " << pos_.fileName << ": " << pos_.lineNo << ":" << pos_.charNo;
+Module::Module(std::string name, const FilePos &pos, std::shared_ptr<Node> sseq_node, std::shared_ptr<Scope> module_scope) : Symbol(std::move(name), pos, 1), sseq_node(std::move(sseq_node)), scope_(std::move(module_scope)) {
 }
+
+void Module::print(std::ostream &s, const int tabs) {
+    for (int i = 0; i < tabs; i++) s << "\t";
+    s << "MODULE " << name_ << " declared at " << declared_at_.fileName << ": " << declared_at_.lineNo << ":" << declared_at_.charNo << std::endl;
+    scope_->print(s, tabs + 1);
+}
+

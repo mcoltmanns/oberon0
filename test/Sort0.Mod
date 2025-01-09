@@ -12,8 +12,13 @@ TESTRECORD = RECORD foo, bar : INTEGER; bizz : BOOLEAN END;
 (* Array to be sorted. *)
 VAR a: INTARRAY;
 
+PROCEDURE NoDecs;
+BEGIN
+END NoDecs;
+
 (* Initializes the array. *)
-PROCEDURE Init();
+PROCEDURE Init(VAR foo: INTEGER; VAR fizz: INTARRAY);
+TYPE INTARRAYTWO = ARRAY Dim + 1 OF INTEGER;
 VAR i: INTEGER;
 BEGIN
     i := 0;

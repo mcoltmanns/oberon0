@@ -7,8 +7,10 @@
 #ifndef OBERON0C_NODEVISITOR_H
 #define OBERON0C_NODEVISITOR_H
 
+#include <utility>
+
 #include "parser/ast/Node.h"
-#include "symbol_table/SymbolTable.h"
+#include "symbol_table/Scope.h"
 #include "util/Logger.h"
 
 
@@ -23,19 +25,28 @@ public:
 
     long int evaluate_const_expression(const std::shared_ptr<Node> &exp_node);
 
-    virtual void visit(Node* node) { logger_.warning(node->pos().fileName, "Visiting node"); }
+    virtual void visit(std::shared_ptr<Node> node) { logger_.warning(node->pos().fileName, "Visiting node"); }
 };
 
 class DecNodeVisitor final : public NodeVisitor {
 private:
-    SymbolTable& scope_;
+    std::shared_ptr<Scope> scope_;
 
 public:
-    explicit DecNodeVisitor(SymbolTable& scope, Logger& logger) : NodeVisitor(logger), scope_(scope) {}
-
+    explicit DecNodeVisitor(std::shared_ptr<Scope> scope, Logger& logger) : NodeVisitor(logger), scope_(std::move(scope)) {}
     ~DecNodeVisitor() noexcept override;
 
-    void visit(Node* node) override;
+    void visit(std::shared_ptr<Node> node) override;
+};
+
+class UseNodeVisitor final : public NodeVisitor {
+private:
+    Scope& scope_;
+public:
+    explicit UseNodeVisitor(Scope& scope, Logger& logger) : NodeVisitor(logger), scope_(scope) {}
+    ~UseNodeVisitor() noexcept override;
+
+    void visit(std::shared_ptr<Node> node) override;
 };
 
 

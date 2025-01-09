@@ -7,29 +7,30 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "global.h"
 
 class Symbol {
 protected:
     std::string name_;
-    FilePos pos_;
+    FilePos declared_at_; // where was this declared? (things may only be declared once)
 
 public:
     int size_; // how many memory units does this thing take up?
+    int offset_; // at what point in the scope AR is this thing kept?
 
-    Symbol(std::string name, FilePos pos, const int size) : name_(std::move(name)), pos_(std::move(pos)), size_(size) {}
-    explicit Symbol(std::string name, int size) : name_(std::move(name)), pos_(), size_(size) {}
+    Symbol(std::string name, FilePos pos, const int size) : name_(std::move(name)), declared_at_(std::move(pos)), size_(size) {}
+    explicit Symbol(std::string name, int size) : name_(std::move(name)), declared_at_(), size_(size) {}
 
     virtual ~Symbol();
 
-    [[nodiscard]] std::unique_ptr<string> getName() const;
+    [[nodiscard]] std::string name() const;
 
-    [[nodiscard]] std::unique_ptr<FilePos> getPos() const;
+    [[nodiscard]] std::unique_ptr<FilePos> pos() const;
 
-    virtual void print(std::ostream& s);
+    virtual void print(std::ostream& s, int tabs);
 };
-
 
 
 #endif //SYMBOL_H

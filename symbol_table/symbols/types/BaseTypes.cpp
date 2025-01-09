@@ -8,22 +8,25 @@ IntegerType::~IntegerType() {
 
 }
 
-void IntegerType::print(std::ostream& s) {
-    s << "BASE TYPE \"" << this->name_ << "\"";
+void IntegerType::print(std::ostream &s, const int tabs) {
+    for (int i = 0; i < tabs; i++) s << "\t";
+    s << "BASE TYPE \"" << this->name_ << "\"" << std::endl;
 }
 
 StringType::~StringType() {
 
 }
 
-void StringType::print(std::ostream& s) {
-    s << "BASE TYPE \"" << this->name_ << "\"";
+void StringType::print(std::ostream &s, const int tabs) {
+    for (int i = 0; i < tabs; i++) s << "\t";
+    s << "BASE TYPE \"" << this->name_ << "\"" << std::endl;
 }
 
 BooleanType::~BooleanType() {
 
 }
 
-void BooleanType::print(std::ostream& s) {
-    s << "BASE TYPE \"" << this->name_ << "\"";
+void BooleanType::print(std::ostream &s, const int tabs) {
+    for (int i = 0; i < tabs; i++) s << "\t";
+    s << "BASE TYPE \"" << this->name_ << "\"" << std::endl;
 }

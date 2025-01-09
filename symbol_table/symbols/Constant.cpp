@@ -4,7 +4,8 @@
 
 #include "Constant.h"
 
-void Constant::print(std::ostream& s) {
-    s << "CONSTANT " << name_ << " with value " << value_ << " declared at " << pos_.fileName << ":" << pos_.lineNo <<
-            ":" << pos_.charNo;
+void Constant::print(std::ostream &s, const int tabs) {
+    for (int i = 0; i < tabs; i++) s << "\t";
+    s << "CONSTANT " << name_ << " with value " << value_ << " and offset " << offset_ << " declared at " << declared_at_.fileName << ":" << declared_at_.lineNo <<
+            ":" << declared_at_.charNo << std::endl;
 }

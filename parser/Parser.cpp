@@ -13,7 +13,7 @@
 #include "ast/OperatorNode.h"
 #include "ast/visitor/NodeVisitor.h"
 #include "scanner/IdentToken.h"
-#include "symbol_table/SymbolTable.h"
+#include "symbol_table/Scope.h"
 
 
 unique_ptr<IdentNode> Parser::ident() {
@@ -79,11 +79,10 @@ void Parser::parse() {
     accept(TokenType::eof);*/
     auto mod = std::make_shared<Node>(*module());
     mod->print(cout);
-    auto table = SymbolTable(logger_);
+    auto table = std::make_shared<Scope>(logger_, "outermost");
     auto visitor = DecNodeVisitor(table, logger_);
-    visitor.visit(mod->children().at(1)->children().front().get());
-    visitor.visit(mod->children().at(1)->children().at(1).get());
-    table.print(cout);
+    visitor.visit(mod);
+    table->print(cout);
 }
 
 std::unique_ptr<Node> Parser::module() {

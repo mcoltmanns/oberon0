@@ -77,8 +77,10 @@ set(SYMTBL_SOURCES
         symbol_table/symbols/Variable.h
         symbol_table/symbols/Module.cpp
         symbol_table/symbols/Module.h
-        symbol_table/SymbolTable.cpp
-        symbol_table/SymbolTable.h)
+        symbol_table/Scope.cpp
+        symbol_table/Scope.h
+        symbol_table/symbols/Reference.cpp
+        symbol_table/symbols/Reference.h)
 
 set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES} ${SYMTBL_SOURCES})
 

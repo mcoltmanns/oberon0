@@ -16,8 +16,8 @@ private:
 public:
     Variable(std::string name, std::string type_name, FilePos pos) : Symbol(std::move(name), std::move(pos), VAR_SIZE), type_name_(std::move(type_name)) {}
 
-    std::string getTypeName() { return type_name_; };
-    void print(std::ostream& s) override;
+    std::string type_name() { return type_name_; };
+    void print(std::ostream &s, int tabs) override;
 };
 
 
