@@ -6,8 +6,8 @@
 #define MODULE_H
 
 #include "Symbol.h"
-#include "parser/ast/Node.h"
-#include "symbol_table/Scope.h"
+#include "parser/ast/nodes/Node.h"
+#include "scoper/Scope.h"
 
 class Module final : public Symbol {
 private:

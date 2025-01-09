@@ -8,12 +8,12 @@
 #include <valarray>
 
 #include "global.h"
-#include "ast/IdentNode.h"
-#include "ast/LiteralNode.h"
-#include "ast/OperatorNode.h"
+#include "ast/nodes/IdentNode.h"
+#include "ast/nodes/LiteralNode.h"
+#include "ast/nodes/OperatorNode.h"
 #include "ast/visitor/NodeVisitor.h"
 #include "scanner/IdentToken.h"
-#include "symbol_table/Scope.h"
+#include "scoper/Scope.h"
 
 
 unique_ptr<IdentNode> Parser::ident() {

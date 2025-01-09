@@ -8,13 +8,13 @@
 
 #include <boost/convert/parameters.hpp>
 
-#include "parser/ast/IdentNode.h"
-#include "symbol_table/symbols/Constant.h"
-#include "symbol_table/symbols/Module.h"
-#include "symbol_table/symbols/Procedure.h"
-#include "symbol_table/symbols/Reference.h"
-#include "symbol_table/symbols/Variable.h"
-#include "symbol_table/symbols/types/ConstructedTypes.h"
+#include "parser/ast/nodes/IdentNode.h"
+#include "scoper/symbols/Constant.h"
+#include "scoper/symbols/Module.h"
+#include "scoper/symbols/Procedure.h"
+#include "scoper/symbols/Reference.h"
+#include "scoper/symbols/Variable.h"
+#include "scoper/symbols/types/ConstructedTypes.h"
 
 
 NodeVisitor::NodeVisitor(Logger& logger): logger_(logger) {

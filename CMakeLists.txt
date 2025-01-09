@@ -50,37 +50,38 @@ set(SCANNER_SOURCES
 
 set(PARSER_SOURCES
         parser/Parser.h
-        parser/ast/Node.cpp parser/ast/Node.h
         parser/ast/visitor/NodeVisitor.cpp parser/ast/visitor/NodeVisitor.h
         parser/Parser.cpp
-        parser/ast/OperatorNode.cpp
-        parser/ast/OperatorNode.h
-        parser/ast/IdentNode.cpp
-        parser/ast/IdentNode.h
-        parser/ast/LiteralNode.cpp
-        parser/ast/LiteralNode.h)
+        parser/ast/nodes/IdentNode.cpp
+        parser/ast/nodes/LiteralNode.cpp
+        parser/ast/nodes/LiteralNode.h
+        parser/ast/nodes/Node.cpp
+        parser/ast/nodes/Node.h
+        parser/ast/nodes/OperatorNode.cpp
+        parser/ast/nodes/OperatorNode.h
+)
 
 set(SYMTBL_SOURCES
-        symbol_table/symbols/types/BaseTypes.cpp
-        symbol_table/symbols/types/BaseTypes.h
-        symbol_table/symbols/types/ConstructedTypes.cpp
-        symbol_table/symbols/types/ConstructedTypes.h
-        symbol_table/symbols/types/Type.cpp
-        symbol_table/symbols/types/Type.h
-        symbol_table/symbols/Constant.cpp
-        symbol_table/symbols/Constant.h
-        symbol_table/symbols/Procedure.cpp
-        symbol_table/symbols/Procedure.h
-        symbol_table/symbols/Symbol.cpp
-        symbol_table/symbols/Symbol.h
-        symbol_table/symbols/Variable.cpp
-        symbol_table/symbols/Variable.h
-        symbol_table/symbols/Module.cpp
-        symbol_table/symbols/Module.h
-        symbol_table/Scope.cpp
-        symbol_table/Scope.h
-        symbol_table/symbols/Reference.cpp
-        symbol_table/symbols/Reference.h)
+        scoper/symbols/types/BaseTypes.cpp
+        scoper/symbols/types/BaseTypes.h
+        scoper/symbols/types/ConstructedTypes.cpp
+        scoper/symbols/types/ConstructedTypes.h
+        scoper/symbols/types/Type.cpp
+        scoper/symbols/types/Type.h
+        scoper/symbols/Constant.cpp
+        scoper/symbols/Constant.h
+        scoper/symbols/Procedure.cpp
+        scoper/symbols/Procedure.h
+        scoper/symbols/Symbol.cpp
+        scoper/symbols/Symbol.h
+        scoper/symbols/Variable.cpp
+        scoper/symbols/Variable.h
+        scoper/symbols/Module.cpp
+        scoper/symbols/Module.h
+        scoper/Scope.cpp
+        scoper/Scope.h
+        scoper/symbols/Reference.cpp
+        scoper/symbols/Reference.h)
 
 set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES} ${SYMTBL_SOURCES})
 

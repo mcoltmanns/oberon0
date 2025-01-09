@@ -4,7 +4,7 @@
 
 #ifndef TYPE_H
 #define TYPE_H
-#include "symbol_table/symbols/Symbol.h"
+#include "scoper/symbols/Symbol.h"
 
 
 class Type : public Symbol {

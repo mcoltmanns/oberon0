@@ -10,10 +10,10 @@
 
 #include <string>
 
-#include "ast/IdentNode.h"
-#include "ast/LiteralNode.h"
+#include "ast/nodes/IdentNode.h"
+#include "ast/nodes/LiteralNode.h"
 #include "scanner/Scanner.h"
-#include "ast/Node.h"
+#include "ast/nodes/Node.h"
 
 using std::string;
 

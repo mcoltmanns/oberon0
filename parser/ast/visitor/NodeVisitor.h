@@ -9,8 +9,8 @@
 
 #include <utility>
 
-#include "parser/ast/Node.h"
-#include "symbol_table/Scope.h"
+#include "parser/ast/nodes/Node.h"
+#include "scoper/Scope.h"
 #include "util/Logger.h"
 
 
