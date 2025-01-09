@@ -10,6 +10,8 @@
 #include <vector>
 
 #include "global.h"
+#include "parser/ast/nodes/Node.h"
+
 
 class Symbol {
 protected:
@@ -19,9 +21,11 @@ protected:
 public:
     int size_; // how many memory units does this thing take up?
     int offset_; // at what point in the scope AR is this thing kept?
+    std::vector<std::shared_ptr<Node>> uses_; // where in the program is this used?
 
-    Symbol(std::string name, FilePos pos, const int size) : name_(std::move(name)), declared_at_(std::move(pos)), size_(size) {}
-    explicit Symbol(std::string name, int size) : name_(std::move(name)), declared_at_(), size_(size) {}
+    Symbol(std::string name, FilePos pos, const int size) : name_(std::move(name)), declared_at_(std::move(pos)), size_(size), offset_(0) {}
+
+    explicit Symbol(std::string name, const int size) : name_(std::move(name)), declared_at_(), size_(size), offset_(0) {}
 
     virtual ~Symbol();
 

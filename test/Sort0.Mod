@@ -2,15 +2,19 @@
 MODULE Sort0;
 
 (* Length of the array to be sorted. *)
-CONST Dim = 1 + 2 * 3 + 4;
+CONST Dim = 1;
+otherConst = 1 - Dim + 3 * Dim;
 
 (* Array type *)
 TYPE INTARRAY = ARRAY Dim OF INTEGER;
+FAKEINT = INTEGER;
 
-TESTRECORD = RECORD foo, bar : INTEGER; bizz : BOOLEAN END;
+TESTRECORD = RECORD foo, bar : INTEGER; bizz : INTARRAY END;
 
 (* Array to be sorted. *)
 VAR a: INTARRAY;
+
+rec: TESTRECORD;
 
 PROCEDURE NoDecs;
 BEGIN
@@ -22,6 +26,7 @@ TYPE INTARRAYTWO = ARRAY Dim + 1 OF INTEGER;
 VAR i: INTEGER;
 BEGIN
     i := 0;
+    a := rec.foo;
     WHILE i < Dim DO
         a[i] := Dim-i;
         i := i + 1

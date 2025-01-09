@@ -6,7 +6,7 @@
 
 #include "NodeVisitor.h"
 
-#include <boost/convert/parameters.hpp>
+#include <stack>
 
 #include "parser/ast/nodes/IdentNode.h"
 #include "scoper/symbols/Constant.h"
@@ -17,7 +17,7 @@
 #include "scoper/symbols/types/ConstructedTypes.h"
 
 
-NodeVisitor::NodeVisitor(Logger& logger): logger_(logger) {
+NodeVisitor::NodeVisitor(std::shared_ptr<Scope> scope, Logger& logger): scope_(scope), logger_(logger) {
 }
 
 NodeVisitor::~NodeVisitor() noexcept = default;
@@ -43,16 +43,98 @@ long int NodeVisitor::evaluate_const_expression(const std::shared_ptr<Node>& exp
     return static_cast<long int>(exp_node->children().size());
 }
 
-
-DecNodeVisitor::~DecNodeVisitor() noexcept {
+// find the type of a node
+std::shared_ptr<Type> NodeVisitor::get_type(const std::shared_ptr<Node> &node) {
+    switch (node->type()) {
+        // lone identifiers can be looked up
+        case NodeType::ident: {
+            auto ident_node = std::dynamic_pointer_cast<IdentNode>(node);
+            if (ident_node->selector()) { // identifier has a selector?
+                if (ident_node->selector()->type() == NodeType::sel_index) {
+                    // index selector means array
+                    return scope_->lookup<ArrayType>(ident_node->name())->base_type(); // so return that array's base type
+                }
+                // else must be a field
+                auto field_name_node = std::dynamic_pointer_cast<IdentNode>(ident_node->selector()->children().front()); // get the field name
+                return scope_->lookup<RecordType>(ident_node->name())->fields().at(field_name_node->name()); // return the type of that field name
+            }
+            // constants are always ints
+            if (auto cons = scope_->lookup<Constant>(ident_node->name())) return scope_->lookup<Type>("INTEGER");
+            // vars have their type attached
+            if (auto var = scope_->lookup<Variable>(ident_node->name())) return var->type();
+            // so do refs
+            if (auto ref = scope_->lookup<Reference>(ident_node->name())) return scope_->lookup<Type>(ref->referenced_type_name());
+            // nothing else is admissible as an expression type
+            logger_.error(node->pos(), "Couldn't determine expression type");
+            return nullptr;
+        }
+        case NodeType::literal: { // all literals are integers
+            return scope_->lookup<Type>("INTEGER");
+        }
+        case NodeType::expression: {
+            /* as outlined in scoper/symbols/types/typerules:
+            * T(expression with operators) = T(first non-operator terminal in expression)
+            * BUT, if there is more than one non-operator terminal x in the expression and T(x) != INTEGER, this type is unresolvable
+            */
+            // do a little dfs
+            std::shared_ptr<Node> first, second;
+            std::unordered_map<std::shared_ptr<Node>, bool> visited;
+            std::stack<std::shared_ptr<Node>> node_stack;
+            node_stack.push(node);
+            while (!node_stack.empty()) {
+                auto n = node_stack.top();
+                node_stack.pop();
+                if (!visited[n]) {
+                    visited[n] = true;
+                    if (n->children().size() == 0 && (n->type() == NodeType::literal || n->type() == NodeType::ident)) {
+                        if (first) {
+                            second = n;
+                            break;
+                        }
+                        first = n;
+                    }
+                    for (auto child : n->children()) {
+                        if (!visited[child])
+                            node_stack.push(child);
+                    }
+                }
+            }
+            if (!first) { // no non-op terminals (should never happen)
+                logger_.error(node->pos(), "Couldn't determine expression type");
+                return nullptr;
+            }
+            if (!second) return get_type(first); // only one non-op terminal
+            // more than one non-op terminal - must be integer or things are bad
+            if (get_type(first)->name() != "INTEGER") {
+                logger_.error(node->pos(), "Couldn't determine expression type");
+                return nullptr;
+            }
+            return scope_->lookup<Type>("INTEGER"); // otherwise just integer
+        }
+        default: {
+            logger_.error(node->pos(), "Couldn't determine expression type");
+            return nullptr;
+        }
+    }
 }
 
-void DecNodeVisitor::visit(std::shared_ptr<Node> node) {
+
+
+Scoper::~Scoper() noexcept {
+}
+
+// add a declaration node to the visitor's scope
+void Scoper::visit(std::shared_ptr<Node> node) {
     IdentNode* name_node;
     switch (node->type()) {
         case NodeType::dec_const: { // constant declaration
             name_node = dynamic_cast<IdentNode *>(node->children().front().get());
             auto exp_node = node->children().at(1);
+            auto exp_type = get_type(exp_node);
+            if (exp_type) {
+                node->print(cout);
+                exp_type->print(cout, 0);
+            }
             auto sym = Constant(name_node->name(), evaluate_const_expression(exp_node), node->pos());
             scope_->add(std::make_shared<Constant>(sym));
             break;
@@ -67,7 +149,7 @@ void DecNodeVisitor::visit(std::shared_ptr<Node> node) {
                     // array lengths are known at compile time - any identifiers in these expressions should be constants that have already been declared
                     auto length = evaluate_const_expression(type_node->children().at(0));
                     auto base_type_name = dynamic_cast<IdentNode *>(type_node->children().at(1)->children().at(0).get())->name();
-                    auto base_type = std::dynamic_pointer_cast<Type>(scope_->lookup(base_type_name));
+                    auto base_type = scope_->lookup<Type>(base_type_name);
                     if (!base_type) {
                         stringstream ss;
                         ss << "Unknown type: \"" << base_type_name << "\"";
@@ -85,11 +167,11 @@ void DecNodeVisitor::visit(std::shared_ptr<Node> node) {
                     auto sym = RecordType(name_node->name(), node->pos(), 0);
                     for (const auto& field_list_node : type_node->children()) {
                         auto field_type_node = dynamic_cast<IdentNode *>(field_list_node->children().back()->children().front().get());
-                        if (!scope_->lookup(field_type_node->name())) {
+                        auto field_type = scope_->lookup<Type>(field_type_node->name());
+                        if (!field_type) {
                             logger_.error(node->pos(), "Unknown type: \"" + field_type_node->name() + "\"");
                             break;
                         }
-                        const std::shared_ptr<Type> field_type = std::dynamic_pointer_cast<Type>(scope_->lookup(field_type_node->name())); // TODO: refactor all smart pointer casts to use this! do not create new pointers from dynamic casts!
                         for (const auto& ident_node : field_list_node->children().front()->children()) {
                             sym.size_ += field_type->size_; // record size is just the sum of the sizes of its fields
                             sym.fields().emplace(dynamic_cast<IdentNode *>(ident_node.get())->name(), field_type);
@@ -99,8 +181,10 @@ void DecNodeVisitor::visit(std::shared_ptr<Node> node) {
                     break;
                 }
                 case NodeType::type_raw: {
-                    auto sym = Type(name_node->name(), node->pos(), scope_->get_next_offset());
-                    scope_->add(std::make_shared<Type>(sym));
+                    auto base_type_name = dynamic_cast<IdentNode*>(type_node->children().front().get())->name();
+                    auto base_type = scope_->lookup<Type>(base_type_name);
+                    auto sym = DerivedType(name_node->name(), base_type, node->pos());
+                    scope_->add(std::make_shared<DerivedType>(sym));
                     break;
                 }
                 default: {
@@ -111,9 +195,14 @@ void DecNodeVisitor::visit(std::shared_ptr<Node> node) {
         }
         case NodeType::dec_var: {
             auto ident_list_node = node->children().front(); // first nlaration is a list of identifiers
-            auto type_name_node = node->children().back()->children().front(); // second node's the type all those identifiers will have
+            auto type_name_node = dynamic_cast<IdentNode *>(node->children().back()->children().front().get());
+            auto var_type = scope_->lookup<Type>(type_name_node->name());
+            if (!var_type) {
+                logger_.error(node->pos(), "Unknown type: \"" + type_name_node->name() + "\"");
+                break;
+            }
             for(const auto& id : ident_list_node->children()) {
-                auto var_sym = Variable(dynamic_cast<IdentNode *>(id.get())->name(), dynamic_cast<IdentNode*>(type_name_node.get())->name(), id->pos());
+                auto var_sym = Variable(dynamic_cast<IdentNode *>(id.get())->name(), var_type, id->pos(), var_type->size_);
                 scope_->add(std::make_shared<Variable>(var_sym));
             }
             break;
@@ -144,7 +233,8 @@ void DecNodeVisitor::visit(std::shared_ptr<Node> node) {
                     // within a param list: first node is a list of identifiers, second node is a type_raw containing an identifier name which must be a previously declared type
                     // find out the type name for this set of params
                     auto type_name = dynamic_cast<IdentNode *>(param_list->children().at(1)->children().front().get())->name();
-                    if (!proc_scope->lookup(type_name)) {
+                    auto proc_type = proc_scope->lookup<Type>(type_name);
+                    if (!proc_type) {
                         logger_.error(param_list->pos(), "Unknown type: \"" + type_name + "\"");
                     }
                     else {
@@ -153,7 +243,7 @@ void DecNodeVisitor::visit(std::shared_ptr<Node> node) {
                                 // add the parameters as variables declared in the function to the procedure scope
                                 for (const auto& param_ident_node : param_list->children().front()->children()) {
                                     auto ident = dynamic_cast<IdentNode*>(param_ident_node.get());
-                                    auto sym = std::make_shared<Variable>(ident->name(), type_name, ident->pos()); // variable named foo of type bar, declared at pos
+                                    auto sym = std::make_shared<Variable>(ident->name(), proc_type, ident->pos(), proc_type->size_); // variable named foo of type bar, declared at pos, copy vars have the same size as their base types
                                     proc_scope->add(sym);
                                 }
                                 break;
@@ -176,7 +266,7 @@ void DecNodeVisitor::visit(std::shared_ptr<Node> node) {
                 }
             }
             // process declarations
-            auto nv = DecNodeVisitor(proc_scope, logger_); // operating in the procedure scope, so we need a new visitor
+            auto nv = Scoper(proc_scope, logger_); // operating in the procedure scope, so we need a new visitor
             for (const auto& dec : decs_node->children()) nv.visit(dec);
             proc_sym.size_ += proc_scope->symtbl_size(); // add the size of the procedure's symbol table to the procedure size (AR size)
             // add procedure to scope (statements were added at proc_sym init)
@@ -194,7 +284,7 @@ void DecNodeVisitor::visit(std::shared_ptr<Node> node) {
             auto decs_node = node->children().at(1); // find declarations
             auto sseq_node = node->children().at(2); // find statement sequence
             auto mod_scope = std::make_shared<Scope>(logger_, scope_, ident_node->name()); // initialize module scope
-            auto nv = DecNodeVisitor(mod_scope, logger_); // init visitor to build module scope
+            auto nv = Scoper(mod_scope, logger_); // init visitor to build module scope
             for (const auto& dec : decs_node->children()) nv.visit(dec); // add declarations to module scope
             auto mod_sym = std::make_shared<Module>(ident_node->name(), ident_node->pos(), sseq_node, mod_scope); // init module symbol
             scope_->add(mod_sym); // add module symbol to scope
@@ -206,10 +296,58 @@ void DecNodeVisitor::visit(std::shared_ptr<Node> node) {
     }
 }
 
-UseNodeVisitor::~UseNodeVisitor() noexcept {
+/*
+Blocker::~Blocker() noexcept {
 }
 
-void UseNodeVisitor::visit(std::shared_ptr<Node> node) {
-    NodeVisitor::visit(node);
-}
+void Blocker::visit(std::shared_ptr<Node> node) {
+    switch (node->type()) {
+        case NodeType::assignment: {
+            auto ident_node = dynamic_cast<IdentNode*>(node->children().front().get());
+            std::shared_ptr<Node> sel_node, exp_node;
+            if (node->children().size() == 3) {
+                sel_node = node->children().at(1);
+                exp_node = node->children().at(2);
+            }
+            else {
+                sel_node = nullptr;
+                exp_node = node->children().at(1);
+            }
+            auto assigned_var = scope_->lookup<Variable>(ident_node->name());
+            auto assigned_ref = scope_->lookup<Reference>(ident_node->name()); // var or ref we're assigning to
+            if (!assigned_var && !assigned_ref) { // make sure it's assignable
+                logger_.error(ident_node->pos(), "Cannot assign to non-assignable or unknown symbol");
+                break;
+            }
+            if (assigned_var) {
+                // make sure types of assignee and expression match
+                auto exp_type = get_type(exp_node);
+                if (!exp_type) {
+                    logger_.error(exp_node->pos(), "Cannot assign non-assignable expression");
+                    break;
+                }
+                if (assigned_var->type()->name() != get_type(exp_node)->name()) {
+                    logger_.error(ident_node->pos(), "Cannot assign expression of type \"" + get_type(exp_node)->name() + "\" to variable of type \"" + assigned_var->type()->name() + "\"");
+                    break;
+                }
+            }
+            break;
+        }
+        case NodeType::proc_call: {
+            break;
+        }
+        case NodeType::if_statement: {
+            break;
+        }
+        case NodeType::while_statement: {
+            break;
+        }
+        case NodeType::repeat_statement: {
+            break;
+        }
+        default: {
+            logger_.error(node->pos(), "INTERNAL: expected basic block node");
+        }
+    }
+}*/
 

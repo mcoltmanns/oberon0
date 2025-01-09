@@ -14,6 +14,8 @@
 #include "ast/visitor/NodeVisitor.h"
 #include "scanner/IdentToken.h"
 #include "scoper/Scope.h"
+#include "scoper/symbols/Module.h"
+#include "scoper/symbols/Procedure.h"
 
 
 unique_ptr<IdentNode> Parser::ident() {
@@ -80,8 +82,10 @@ void Parser::parse() {
     auto mod = std::make_shared<Node>(*module());
     mod->print(cout);
     auto table = std::make_shared<Scope>(logger_, "outermost");
-    auto visitor = DecNodeVisitor(table, logger_);
-    visitor.visit(mod);
+    auto scoper = Scoper(table, logger_);
+    scoper.visit(mod);
+    auto module_scope = table->lookup<Module>("Sort0")->scope_;
+    auto init_proc = module_scope->lookup<Procedure>("Init");
     table->print(cout);
 }
 
@@ -350,7 +354,7 @@ std::unique_ptr<Node> Parser::expression() {
     auto result = std::make_unique<Node>(NodeType::expression, scanner_.peek()->start());
     auto left = simpleExpression();
     unique_ptr<OperatorNode> op = nullptr;
-    unique_ptr<Node> right;
+    unique_ptr<Node> right = nullptr;
     if(expect(TokenType::op_eq)) {
         op = std::make_unique<OperatorNode>(OperatorType::EQ, accept(TokenType::op_eq)->start());
         right = simpleExpression();
@@ -393,12 +397,9 @@ std::unique_ptr<Node> Parser::simpleExpression() {
     else if(expect(TokenType::op_minus)) {
         lead = std::make_unique<OperatorNode>(OperatorType::MINUS, accept(TokenType::op_minus)->start());
     }
-    if (lead != nullptr) {
-        result->append_child(std::move(lead));
-    }
     auto left = term();
     unique_ptr<OperatorNode> op = nullptr;
-    unique_ptr<Node> right = nullptr;
+    unique_ptr<Node> right;
     while(expect(TokenType::op_plus) or expect(TokenType::op_minus) or expect(TokenType::op_or)) {
         if(expect(TokenType::op_plus)) {
             op = std::make_unique<OperatorNode>(OperatorType::PLUS, accept(TokenType::op_plus)->start());
@@ -409,11 +410,13 @@ std::unique_ptr<Node> Parser::simpleExpression() {
         else if(expect(TokenType::op_or)) {
             op = std::make_unique<OperatorNode>(OperatorType::OR, accept(TokenType::op_or)->start());
         }
-        result->append_child(std::move(op));
-        result->append_child(term());
+        right = term();
     }
-    if (result->children().size() < 2) return left; // if there are less than 2 terms, return only the left one (prevents nested singletons)
-    result->prepend_child(std::move(left));
+    if (!op && !lead) return left;
+    if (lead) result->append_child(std::move(lead));
+    result->append_child(std::move(left));
+    result->append_child(std::move(op));
+    result->append_child(std::move(right));
     return result;
 }
 
@@ -421,6 +424,7 @@ std::unique_ptr<Node> Parser::term() {
     auto result = std::make_unique<Node>(NodeType::expression, scanner_.peek()->start());
     auto left = factor();
     unique_ptr<OperatorNode> op = nullptr;
+    unique_ptr<Node> right = nullptr;
     while(expect(TokenType::op_times) or expect(TokenType::op_div) or expect(TokenType::op_mod) or expect(TokenType::op_and)) {
         if(expect(TokenType::op_times)) {
             op = std::make_unique<OperatorNode>(OperatorType::TIMES, accept(TokenType::op_times)->start());
@@ -434,11 +438,12 @@ std::unique_ptr<Node> Parser::term() {
         else if(expect(TokenType::op_and)) {
             op = std::make_unique<OperatorNode>(OperatorType::AND, accept(TokenType::op_and)->start());
         }
-        result->append_child(std::move(op));
-        result->append_child(factor());
+        right = factor();
     }
-    if (result->children().size() < 2) return left;
-    result->prepend_child(std::move(left));
+    if (!op) return left;
+    result->append_child(std::move(left));
+    result->append_child(std::move(op));
+    result->append_child(std::move(right));
     return result;
 }
 
@@ -446,9 +451,14 @@ std::unique_ptr<Node> Parser::factor() {
     auto result = std::make_unique<Node>(NodeType::expression, scanner_.peek()->start());
     if(expect(TokenType::const_ident)) {
         // factor is an identifier with selectors
-        result->append_child(ident());
+        auto id = ident();
+        result->append_child(std::move(id)); // yucky yucky pointer wrangling! but if it's stupid and it works, it isn't stupid
+        auto id_moved = std::dynamic_pointer_cast<IdentNode>(result->children().front());
         auto sel = selector();
-        if (sel != nullptr) result->append_child(std::move(sel));
+        if (sel != nullptr) {
+            result->append_child(std::move(sel));
+            id_moved->set_selector(result->children().back());
+        }
     }
     else if(expect(TokenType::lparen)) {
         // factor is an expressionNode with no leading operator
@@ -478,11 +488,11 @@ std::unique_ptr<Node> Parser::selector() {
         empty = false;
         if(expect(TokenType::period)) {
             result->append_child(std::make_unique<Node>(NodeType::sel_field, accept(TokenType::period)->start()));
-            result->append_child(ident());
+            result->children().back()->append_child(ident());
         }
         else {
             result->append_child(std::make_unique<Node>(NodeType::sel_index, accept(TokenType::lbrack)->start()));
-            result->append_child(expression());
+            result->children().back()->append_child(expression());
             accept(TokenType::rbrack);
         }
     }

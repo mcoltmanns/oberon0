@@ -43,10 +43,7 @@ public:
 
     [[nodiscard]] std::vector<std::shared_ptr<Node>> const &children() const;
     void append_child(std::unique_ptr<Node> child);
-
     void prepend_child(std::unique_ptr<Node> child);
-
-    //virtual void accept(NodeVisitor &visitor) { visitor.visit(this); }
 
     friend std::ostream& operator<<(std::ostream &stream, const Node &node);
     virtual void print(std::ostream &stream, long unsigned int tabs = 0) const;

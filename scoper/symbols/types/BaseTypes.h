@@ -15,7 +15,7 @@ public:
     void print(std::ostream &s, int tabs) override;
 };
 
-class StringType final : public Type {
+/*class StringType final : public Type {
 public:
     explicit StringType() : Type("STRING", 1) {};
     virtual ~StringType();
@@ -29,12 +29,12 @@ public:
     virtual ~BooleanType();
 
     void print(std::ostream &s, int tabs) override;
-};
+};*/
 
 // global basic types - these are static and should NEVER! be declared anywhere else
 static auto BASIC_TYPE_INT = IntegerType();
-static auto BASIC_TYPE_STRING = StringType();
-static auto BASIC_TYPE_BOOL = BooleanType();
+/*static auto BASIC_TYPE_STRING = StringType();
+static auto BASIC_TYPE_BOOL = BooleanType();*/
 
 
 #endif //INTEGERTYPE_H

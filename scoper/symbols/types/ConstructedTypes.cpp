@@ -8,6 +8,10 @@ ArrayType::~ArrayType() {
 
 }
 
+DerivedType::~DerivedType() {
+
+}
+
 RecordType::~RecordType() {
 
 }

@@ -11,10 +11,11 @@
 
 class Procedure final : public Symbol {
 private:
+
+public:
     std::shared_ptr<Node> sseq_node_; // which statement sequence does this procedure execute?
     std::shared_ptr<Scope> scope_;
 
-public:
     Procedure(std::string name, const FilePos &pos, std::shared_ptr<Node> sseq_node, std::shared_ptr<Scope> procedure_scope);
 
     void print(std::ostream &s, int tabs) override;

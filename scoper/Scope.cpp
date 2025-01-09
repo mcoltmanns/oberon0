@@ -9,28 +9,98 @@
 #include "symbols/Constant.h"
 #include "symbols/Module.h"
 #include "symbols/Procedure.h"
+#include "symbols/Reference.h"
+#include "symbols/Variable.h"
 #include "symbols/types/BaseTypes.h"
+#include "symbols/types/ConstructedTypes.h"
 
-// return shared ptr to symbol in table
-// return nullptr if symbol not present
-std::shared_ptr<Symbol> Scope::lookup(const std::string &name) {
-    // if we looked up a base type, return a pointer to the static base type
+
+// lookup a symbol by its name
+// you must provide the symbol you are expecting!
+template<>
+std::shared_ptr<Type> Scope::lookup(const std::string &name) {
     if (name == "INTEGER") return std::make_shared<Type>(BASIC_TYPE_INT);
-    if (name == "STRING") return std::make_shared<Type>(BASIC_TYPE_STRING);
-    if (name == "BOOLEAN") return std::make_shared<Type>(BASIC_TYPE_BOOL);
-
-    return find_by_name(name);
-}
-
-// return shared ptr to symbol in table
-// recurses upwards into all visible scopes
-std::shared_ptr<Symbol> Scope::find_by_name(const std::string &name) {
     for (auto entry : table_) {
-        if (entry->name() == name) return entry;
+        if (entry->name() == name) return std::dynamic_pointer_cast<Type>(entry);
     }
-    if (outer_) return outer_->find_by_name(name);
-    return nullptr; // found nothing?
+    if (outer_) return outer_->lookup<Type>(name);
+    return nullptr;
 }
+template<>
+std::shared_ptr<Constant> Scope::lookup(const std::string &name) {
+    for (auto entry : table_) {
+        if (entry->name() == name) return std::dynamic_pointer_cast<Constant>(entry);
+    }
+    if (outer_) return outer_->lookup<Constant>(name);
+    return nullptr;
+}
+template<>
+std::shared_ptr<Module> Scope::lookup(const std::string &name) {
+    for (auto entry : table_) {
+        if (entry->name() == name) return std::dynamic_pointer_cast<Module>(entry);
+    }
+    if (outer_) return outer_->lookup<Module>(name);
+    return nullptr;
+}
+template<>
+std::shared_ptr<Procedure> Scope::lookup(const std::string &name) {
+    for (auto entry : table_) {
+        if (entry->name() == name) return std::dynamic_pointer_cast<Procedure>(entry);
+    }
+    if (outer_) return outer_->lookup<Procedure>(name);
+    return nullptr;
+}
+template<>
+std::shared_ptr<Reference> Scope::lookup(const std::string &name) {
+    for (auto entry : table_) {
+        if (entry->name() == name) return std::dynamic_pointer_cast<Reference>(entry);
+    }
+    if (outer_) return outer_->lookup<Reference>(name);
+    return nullptr;
+}
+template<>
+std::shared_ptr<Symbol> Scope::lookup(const std::string &name) {
+    if (name == "INTEGER") return std::make_shared<Symbol>(BASIC_TYPE_INT);
+    for (auto entry : table_) {
+        if (entry->name() == name) return std::dynamic_pointer_cast<Symbol>(entry);
+    }
+    if (outer_) return outer_->lookup<Symbol>(name);
+    return nullptr;
+}
+template<>
+std::shared_ptr<Variable> Scope::lookup(const std::string &name) {
+    for (auto entry : table_) {
+        if (entry->name() == name) return std::dynamic_pointer_cast<Variable>(entry);
+    }
+    if (outer_) return outer_->lookup<Variable>(name);
+    return nullptr;
+}
+template<>
+std::shared_ptr<DerivedType> Scope::lookup(const std::string &name) {
+    for (auto entry : table_) {
+        if (entry->name() == name) return std::dynamic_pointer_cast<DerivedType>(entry);
+    }
+    if (outer_) return outer_->lookup<DerivedType>(name);
+    return nullptr;
+}
+template<>
+std::shared_ptr<RecordType> Scope::lookup(const std::string &name) {
+    for (auto entry : table_) {
+        if (entry->name() == name) return std::dynamic_pointer_cast<RecordType>(entry);
+    }
+    if (outer_) return outer_->lookup<RecordType>(name);
+    return nullptr;
+}
+template<>
+std::shared_ptr<ArrayType> Scope::lookup(const std::string &name) {
+    for (auto entry : table_) {
+        if (entry->name() == name) return std::dynamic_pointer_cast<ArrayType>(entry);
+    }
+    if (outer_) return outer_->lookup<ArrayType>(name);
+    return nullptr;
+}
+
+
 
 /*
  * what does generating the symbol table entail?
@@ -63,7 +133,14 @@ int Scope::get_next_offset() const {
 }
 
 // does not check typing
+// but does check duplicate symbol uses within current scope
+// symbols in outer scopes are simply obscured during lookup
 void Scope::add(const std::shared_ptr<Symbol>& sym) {
+    for (auto entry : table_) {
+        if (entry->name() == sym->name()) {
+            logger_.error(sym->pos().operator*(), "Name already in use in this scope");
+        }
+    }
     table_.push_back(sym);
     sym->offset_ = current_offset_; // set the offset (second part of static coord)
     current_offset_ += sym->size_;

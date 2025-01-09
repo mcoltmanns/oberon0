@@ -32,10 +32,8 @@ public:
 
     ~Scope() = default;
 
-
-    std::shared_ptr<Symbol> lookup(const std::string &name);
-
-    std::shared_ptr<Symbol> find_by_name(const std::string &name);
+    template<class T>
+    std::shared_ptr<T> lookup(const std::string &name); // pretty proud of this one!
 
     void print(std::ostream& s);
     void print(std::ostream &s, int tabs);
@@ -44,10 +42,7 @@ public:
 
     void add(const std::shared_ptr<Symbol>& sym);
 
-    int get_offset(const string &name) const;
-
     int symtbl_size() const;
 };
-
 
 #endif //SYMTABLEGENERATOR_H

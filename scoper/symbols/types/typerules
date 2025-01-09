@@ -1,0 +1,11 @@
+type rules
+
+T(type) = type
+T(literal) = INTEGER
+T(ident) = ident.type
+T(ident[]) = ident.basetype
+T(ident.x) = ident.fields().at(x)
+
+T(expression with operators) = T(first non-operator terminal in expression)
+                if there is more than 1 non-operator terminal x in the expression and T(x) != INTEGER, this is an unresolvable type
+                    because operations are only defined between integers, not on user-defined types or constructed types
