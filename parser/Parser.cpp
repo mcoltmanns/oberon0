@@ -415,8 +415,10 @@ std::unique_ptr<Node> Parser::simpleExpression() {
     if (!op && !lead) return left;
     if (lead) result->append_child(std::move(lead));
     result->append_child(std::move(left));
-    result->append_child(std::move(op));
-    result->append_child(std::move(right));
+    if (op) {
+        result->append_child(std::move(op));
+        result->append_child(std::move(right));
+    }
     return result;
 }
 
