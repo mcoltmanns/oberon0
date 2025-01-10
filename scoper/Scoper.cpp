@@ -6,12 +6,129 @@
 
 #include <parser/ast/nodes/IdentNode.h>
 
+#include "parser/ast/nodes/LiteralNode.h"
+#include "parser/ast/nodes/OperatorNode.h"
 #include "symbols/Constant.h"
 #include "symbols/Module.h"
 #include "symbols/Procedure.h"
 #include "symbols/Reference.h"
 #include "symbols/Variable.h"
 #include "symbols/types/ConstructedTypes.h"
+#include "typechecker/TypeChecker.h"
+
+// evaluate a constant expression
+long int Scoper::evaluate_const_expression(const std::shared_ptr<Node>& node) {
+    switch (node->type()) {
+        // literals are easy
+        case NodeType::literal: {
+            return std::dynamic_pointer_cast<LiteralNode>(node)->value();
+        }
+        // idents can be looked up as constants
+        // if the lookup fails, ident was not known at compile time and cannot be used to initialize a constant
+        case NodeType::ident: {
+            auto ident = std::dynamic_pointer_cast<IdentNode>(node);
+            auto ident_sym = scope_->lookup_by_name<Constant>(ident->name());
+            if (!ident_sym) {
+                logger_.error(ident->pos(), "Name \"" + ident->name() + "\" is not a constant and may not be used at constant initialization");
+                return 0;
+            }
+            return ident_sym->value();
+        }
+        // expressions are a little harder - but not too horrible
+        case NodeType::expression: {
+            long int res;
+            bool had_leading = false;
+            // special case for leading sign
+            if (node->children().at(0)->type() == NodeType::op) {
+                auto lead = std::dynamic_pointer_cast<OperatorNode>(node->children().at(0));
+                if (lead->operation() == MINUS) res = -evaluate_const_expression(node->children().at(1));
+                else if (lead->operation() == NOT) res = evaluate_const_expression(node->children().at(1)) == 0 ? 1 : 0;
+                else res = evaluate_const_expression(node->children().at(1));
+                had_leading = true;
+            }
+            // if there was no leading sign, evaluate the first term
+            if (!had_leading) res = evaluate_const_expression(node->children().at(0));
+            // if there was a leading sign, the first two children have been eval'd, otherwise only the first has been
+            for (long unsigned int i = had_leading ? 2 : 1;  i < node->children().size(); i += 2) { // long unsigned int seems like overkill, but apparently we need it
+                auto op = std::dynamic_pointer_cast<OperatorNode>(node->children().at(i)); // first will be the op
+                long int term = evaluate_const_expression(node->children().at(i + 1)); // second will be the term - evaluate it
+                // given the operator, perform on res
+                switch (op->operation()) {
+                    // booleans don't really work. for now, the logical ops return 0 (false) or 1 (true) and handle 0 as falsy and non-zero as truthy
+                    case EQ: {
+                        if (res == term) res = 1;
+                        else res = 0;
+                        break;
+                    }
+                    case NEQ: {
+                        if (res != term) res = 1;
+                        else res = 0;
+                        break;
+                    }
+                    case LT: {
+                        if (res < term) res = 1;
+                        else res = 0;
+                        break;
+                    }
+                    case GT: {
+                        if (res > term) res = 1;
+                        else res = 0;
+                        break;
+                    }
+                    case LEQ: {
+                        if (res <= term) res = 1;
+                        else res = 0;
+                        break;
+                    }
+                    case GEQ: {
+                        if (res >= term) res = 1;
+                        else res = 0;
+                        break;
+                    }
+                    case AND: {
+                        if (res != 0 && term != 0) res = 1;
+                        else res = 0;
+                        break;
+                    }
+                    case OR: {
+                        if (res != 0 || term != 0) res = 1;
+                        else res = 0;
+                        break;
+                    }
+                    // not is a leading operator, and not implemented here
+                    case TIMES: {
+                        res *= term;
+                        break;
+                    }
+                    case DIV: {
+                        res /= term;
+                        break;
+                    }
+                    case MOD: {
+                        res %= term;
+                        break;
+                    }
+                    case PLUS: {
+                        res += term;
+                        break;
+                    }
+                    case MINUS: {
+                        res -= term;
+                        break;
+                    }
+                    default: {
+                        logger_.error(op->pos(), "Unsupported operation");
+                    }
+                }
+            }
+            return res;
+        }
+        default: {
+            logger_.error(node->pos(), "Unable to evaluate constant");
+            return 0;
+        }
+    }
+}
 
 void Scoper::visit(const std::shared_ptr<Node>& node) {
     IdentNode* name_node;
@@ -19,7 +136,8 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
         case NodeType::dec_const: { // constant declaration
             name_node = dynamic_cast<IdentNode *>(node->children().front().get());
             auto exp_node = node->children().at(1);
-            auto exp_type = get_type(exp_node);
+            TypeChecker tc(scope_, logger_);
+            auto exp_type = tc.get_type(exp_node);
             if (exp_type) {
                 node->print(cout);
                 exp_type->print(cout, 0);

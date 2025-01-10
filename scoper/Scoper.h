@@ -13,6 +13,8 @@ public:
     explicit Scoper(std::shared_ptr<Scope> scope, Logger& logger) : NodeVisitor(std::move(scope), logger) {}
     ~Scoper() noexcept override = default;
 
+    long int evaluate_const_expression(const std::shared_ptr<Node> &node);
+
     void visit(const std::shared_ptr<Node>& node) override;
 };
 

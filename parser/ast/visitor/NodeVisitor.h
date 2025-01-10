@@ -23,11 +23,7 @@ public:
     explicit NodeVisitor(std::shared_ptr<Scope> scope, Logger &logger);
     virtual ~NodeVisitor() noexcept = default;
 
-    long int evaluate_const_expression(const std::shared_ptr<Node> &node);
-
-    virtual void visit(const std::shared_ptr<Node>& node) { logger_.warning(node->pos().fileName, "Visiting node"); }
-
-    std::shared_ptr<Type> get_type(const std::shared_ptr<Node> &node);
+    virtual void visit(const std::shared_ptr<Node>& node);
 };
 
 
