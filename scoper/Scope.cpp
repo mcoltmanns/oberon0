@@ -20,6 +20,7 @@
 template<>
 std::shared_ptr<Type> Scope::lookup(const std::string &name) {
     if (name == "INTEGER") return std::make_shared<Type>(BASIC_TYPE_INT);
+    if (name == "BOOLEAN") return std::make_shared<Type>(BASIC_TYPE_BOOL);
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Type>(entry);
     }
@@ -61,6 +62,7 @@ std::shared_ptr<Reference> Scope::lookup(const std::string &name) {
 template<>
 std::shared_ptr<Symbol> Scope::lookup(const std::string &name) {
     if (name == "INTEGER") return std::make_shared<Symbol>(BASIC_TYPE_INT);
+    if (name == "BOOLEAN") return std::make_shared<Symbol>(BASIC_TYPE_BOOL);
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Symbol>(entry);
     }

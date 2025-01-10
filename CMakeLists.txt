@@ -61,7 +61,7 @@ set(PARSER_SOURCES
         parser/ast/nodes/OperatorNode.h
 )
 
-set(SYMTBL_SOURCES
+set(SCOPER_SOURCES
         scoper/symbols/types/BaseTypes.cpp
         scoper/symbols/types/BaseTypes.h
         scoper/symbols/types/ConstructedTypes.cpp
@@ -81,9 +81,11 @@ set(SYMTBL_SOURCES
         scoper/Scope.cpp
         scoper/Scope.h
         scoper/symbols/Reference.cpp
-        scoper/symbols/Reference.h)
+        scoper/symbols/Reference.h
+        scoper/Scoper.cpp
+        scoper/Scoper.h)
 
-set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES} ${SYMTBL_SOURCES})
+set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES} ${SCOPER_SOURCES})
 
 add_executable(${OBERON0_C} main.cpp ${ALL_SOURCES})
 

@@ -14,6 +14,7 @@
 #include "ast/visitor/NodeVisitor.h"
 #include "scanner/IdentToken.h"
 #include "scoper/Scope.h"
+#include "scoper/Scoper.h"
 #include "scoper/symbols/Module.h"
 #include "scoper/symbols/Procedure.h"
 

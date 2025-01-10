@@ -21,32 +21,14 @@ protected:
 
 public:
     explicit NodeVisitor(std::shared_ptr<Scope> scope, Logger &logger);
+    virtual ~NodeVisitor() noexcept = default;
 
-    virtual ~NodeVisitor() noexcept;
+    long int evaluate_const_expression(const std::shared_ptr<Node> &node);
 
-    long int evaluate_const_expression(const std::shared_ptr<Node> &exp_node);
-
-    virtual void visit(std::shared_ptr<Node> node) { logger_.warning(node->pos().fileName, "Visiting node"); }
+    virtual void visit(const std::shared_ptr<Node>& node) { logger_.warning(node->pos().fileName, "Visiting node"); }
 
     std::shared_ptr<Type> get_type(const std::shared_ptr<Node> &node);
 };
 
-class Scoper final : public NodeVisitor {
-public:
-    explicit Scoper(std::shared_ptr<Scope> scope, Logger& logger) : NodeVisitor(scope, logger) {}
-    ~Scoper() noexcept override;
-
-    void visit(std::shared_ptr<Node> node) override;
-};
-
-/*
-class Blocker final : public NodeVisitor {
-public:
-    explicit Blocker(std::shared_ptr<Scope> scope, Logger& logger) : NodeVisitor(scope, logger) {}
-    ~Blocker() noexcept override;
-
-    void visit(std::shared_ptr<Node> node) override;
-};
-*/
 
 #endif //OBERON0C_NODEVISITOR_H

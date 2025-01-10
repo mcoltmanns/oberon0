@@ -3,7 +3,7 @@ MODULE Sort0;
 
 (* Length of the array to be sorted. *)
 CONST Dim = 1;
-otherConst = 1 - Dim + 3 * Dim;
+otherConst = Dim + (-Dim);
 
 (* Array type *)
 TYPE INTARRAY = ARRAY Dim OF INTEGER;
@@ -16,6 +16,8 @@ VAR a: INTARRAY;
 
 rec: TESTRECORD;
 
+bool: BOOLEAN;
+
 PROCEDURE NoDecs;
 BEGIN
 END NoDecs;
@@ -26,6 +28,7 @@ TYPE INTARRAYTWO = ARRAY Dim + 1 OF INTEGER;
 VAR i: INTEGER;
 BEGIN
     i := 0;
+    bool := 1;
     a := rec.foo;
     WHILE i < Dim DO
         a[i] := Dim-i;

@@ -10,7 +10,7 @@
 class IntegerType final : public Type {
 public:
     explicit IntegerType() : Type("INTEGER", 1) {};
-    virtual ~IntegerType();
+    virtual ~IntegerType() = default;
 
     void print(std::ostream &s, int tabs) override;
 };
@@ -21,20 +21,23 @@ public:
     virtual ~StringType();
 
     void print(std::ostream &s, int tabs) override;
-};
+};*/
 
+// booleans are sort of half-implemented right now. they can be declared, but internally I'm just handling everything as an integer. so you can assign ints to bools and v.v
+// you can also do logic ops on ints and math ops on bools
+// 0 is false, nonzero is true
 class BooleanType final : public Type {
 public:
     explicit BooleanType() : Type("BOOLEAN", 1) {};
-    virtual ~BooleanType();
+    virtual ~BooleanType() = default;
 
     void print(std::ostream &s, int tabs) override;
-};*/
+};
 
 // global basic types - these are static and should NEVER! be declared anywhere else
 static auto BASIC_TYPE_INT = IntegerType();
-/*static auto BASIC_TYPE_STRING = StringType();
-static auto BASIC_TYPE_BOOL = BooleanType();*/
+/*static auto BASIC_TYPE_STRING = StringType();*/
+static auto BASIC_TYPE_BOOL = BooleanType();
 
 
 #endif //INTEGERTYPE_H
