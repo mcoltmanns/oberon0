@@ -29,7 +29,9 @@ VAR i: INTEGER;
 BEGIN
     i := 0;
     bool := 1;
-    a := rec.foo;
+    a[0] := 1;
+    rec.bizz[a[0]] := 1;
+    foo := 2;
     WHILE i < Dim DO
         a[i] := Dim-i;
         i := i + 1

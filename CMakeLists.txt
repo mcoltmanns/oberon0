@@ -85,7 +85,11 @@ set(SCOPER_SOURCES
         scoper/Scoper.cpp
         scoper/Scoper.h)
 
-set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES} ${SCOPER_SOURCES})
+set(TYPECHECKER_SOURCES
+        typechecker/TypeChecker.cpp
+        typechecker/TypeChecker.h)
+
+set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES} ${SCOPER_SOURCES} ${TYPECHECKER_SOURCES})
 
 add_executable(${OBERON0_C} main.cpp ${ALL_SOURCES})
 

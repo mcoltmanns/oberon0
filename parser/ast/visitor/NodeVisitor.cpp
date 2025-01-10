@@ -144,13 +144,53 @@ std::shared_ptr<Type> NodeVisitor::get_type(const std::shared_ptr<Node> &node) {
         // lone identifiers can be looked up
         case NodeType::ident: {
             auto ident_node = std::dynamic_pointer_cast<IdentNode>(node);
-            if (ident_node->selector()) { // identifier has a selector?
-                if (ident_node->selector()->type() == NodeType::sel_index) {
+            if (ident_node->selector_block()) { // identifier has a selector block?
+                // only vars and refs can have selector blocks, so:
+                auto selected_var = scope_->lookup<Variable>(ident_node->name());
+                auto selected_ref = scope_->lookup<Reference>(ident_node->name());
+                if (selected_var) {
+                    std::shared_ptr<Type> type = selected_var->type();
+                    for (const auto& child : ident_node->selector_block()->children()) {
+                        if (auto array = std::dynamic_pointer_cast<ArrayType>(type); array && child->type() == NodeType::sel_index) { // type is an array and we are selecting an index and we are using an integer as the index
+                            if (get_type(child->children().front())->name() != "INTEGER") {
+                                logger_.error(child->children().front()->pos(), "Array indexes must be of type INTEGER");
+                            }
+                            type = array->base_type();
+                        }
+                        else if (auto record = std::dynamic_pointer_cast<RecordType>(type); record && child->type() == NodeType::sel_field) { // type is a record and we are selecting a field
+                            type = record->fields().at(std::dynamic_pointer_cast<IdentNode>(child->children().front())->name());
+                        }
+                        else {
+                            logger_.error(child->pos(), "Illegal subscript on non-subscriptable type");
+                            return nullptr;
+                        }
+                    }
+                    return type;
+                }
+                if (selected_ref) {
+                    std::shared_ptr<Type> type = scope_->lookup<Type>(selected_ref->referenced_type_name());
+                    for (const auto& child : ident_node->selector_block()->children()) {
+                        if (auto array = std::dynamic_pointer_cast<ArrayType>(child); array && child->type() == NodeType::sel_index) { // type is an array and we are selecting an index
+                            type = array->base_type();
+                        }
+                        else if (auto record = std::dynamic_pointer_cast<RecordType>(child); record && child->type() == NodeType::sel_field) { // type is a record and we are selecting a field
+                            type = record->fields().at(std::dynamic_pointer_cast<IdentNode>(child->children().front())->name());
+                        }
+                        else {
+                            logger_.error(child->pos(), "Illegal subscript on non-subscriptable type");
+                            return nullptr;
+                        }
+                    }
+                    return type;
+                }
+                logger_.error(ident_node->pos(), "Illegal selector on non-selectable symbol");
+                return nullptr;
+                if (ident_node->selector_block()->type() == NodeType::sel_index) {
                     // index selector means array
                     return scope_->lookup<ArrayType>(ident_node->name())->base_type(); // so return that array's base type
                 }
                 // else must be a field
-                auto field_name_node = std::dynamic_pointer_cast<IdentNode>(ident_node->selector()->children().front()); // get the field name
+                auto field_name_node = std::dynamic_pointer_cast<IdentNode>(ident_node->selector_block()->children().front()); // get the field name
                 return scope_->lookup<RecordType>(ident_node->name())->fields().at(field_name_node->name()); // return the type of that field name
             }
             // constants are always ints
