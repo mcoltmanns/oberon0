@@ -17,6 +17,7 @@
 #include "scoper/Scoper.h"
 #include "scoper/symbols/Module.h"
 #include "scoper/symbols/Procedure.h"
+#include "typechecker/TypeChecker.h"
 
 
 unique_ptr<IdentNode> Parser::ident() {
@@ -88,6 +89,10 @@ void Parser::parse() {
     auto module_scope = table->lookup<Module>("Sort0")->scope_;
     auto init_proc = module_scope->lookup<Procedure>("Init");
     table->print(cout);
+    auto typechecker = TypeChecker(init_proc->scope_, logger_);
+    for (const auto& statement : init_proc->sseq_node_->children()) {
+        typechecker.visit(statement);
+    }
 }
 
 std::unique_ptr<Node> Parser::module() {
@@ -285,7 +290,11 @@ std::unique_ptr<Node> Parser::assignmentOrProcedureCall() {
         accept(TokenType::op_becomes);
         result = std::make_unique<Node>(NodeType::assignment, start);
         result->append_child(std::move(identifier));
-        if (sel != nullptr) result->append_child(std::move(sel));
+        auto id_moved = std::dynamic_pointer_cast<IdentNode>(result->children().front());
+        if (sel != nullptr) {
+            result->append_child(std::move(sel));
+            id_moved->set_selector(result->children().back());
+        }
         result->append_child(expression());
     }
     else {
