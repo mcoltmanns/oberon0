@@ -35,7 +35,7 @@ long int NodeVisitor::evaluate_const_expression(const std::shared_ptr<Node>& nod
         // if the lookup fails, ident was not known at compile time and cannot be used to initialize a constant
         case NodeType::ident: {
             auto ident = std::dynamic_pointer_cast<IdentNode>(node);
-            auto ident_sym = scope_->lookup<Constant>(ident->name());
+            auto ident_sym = scope_->lookup_by_name<Constant>(ident->name());
             if (!ident_sym) {
                 logger_.error(ident->pos(), "Name \"" + ident->name() + "\" is not a constant and may not be used at constant initialization");
                 return 0;
@@ -146,8 +146,8 @@ std::shared_ptr<Type> NodeVisitor::get_type(const std::shared_ptr<Node> &node) {
             auto ident_node = std::dynamic_pointer_cast<IdentNode>(node);
             if (ident_node->selector_block()) { // identifier has a selector block?
                 // only vars and refs can have selector blocks, so:
-                auto selected_var = scope_->lookup<Variable>(ident_node->name());
-                auto selected_ref = scope_->lookup<Reference>(ident_node->name());
+                auto selected_var = scope_->lookup_by_name<Variable>(ident_node->name());
+                auto selected_ref = scope_->lookup_by_name<Reference>(ident_node->name());
                 if (selected_var) {
                     std::shared_ptr<Type> type = selected_var->type();
                     for (const auto& child : ident_node->selector_block()->children()) {
@@ -168,7 +168,7 @@ std::shared_ptr<Type> NodeVisitor::get_type(const std::shared_ptr<Node> &node) {
                     return type;
                 }
                 if (selected_ref) {
-                    std::shared_ptr<Type> type = scope_->lookup<Type>(selected_ref->referenced_type_name());
+                    std::shared_ptr<Type> type = scope_->lookup_by_name<Type>(selected_ref->referenced_type_name());
                     for (const auto& child : ident_node->selector_block()->children()) {
                         if (auto array = std::dynamic_pointer_cast<ArrayType>(child); array && child->type() == NodeType::sel_index) { // type is an array and we are selecting an index
                             type = array->base_type();
@@ -187,24 +187,24 @@ std::shared_ptr<Type> NodeVisitor::get_type(const std::shared_ptr<Node> &node) {
                 return nullptr;
                 if (ident_node->selector_block()->type() == NodeType::sel_index) {
                     // index selector means array
-                    return scope_->lookup<ArrayType>(ident_node->name())->base_type(); // so return that array's base type
+                    return scope_->lookup_by_name<ArrayType>(ident_node->name())->base_type(); // so return that array's base type
                 }
                 // else must be a field
                 auto field_name_node = std::dynamic_pointer_cast<IdentNode>(ident_node->selector_block()->children().front()); // get the field name
-                return scope_->lookup<RecordType>(ident_node->name())->fields().at(field_name_node->name()); // return the type of that field name
+                return scope_->lookup_by_name<RecordType>(ident_node->name())->fields().at(field_name_node->name()); // return the type of that field name
             }
             // constants are always ints
-            if (auto cons = scope_->lookup<Constant>(ident_node->name())) return scope_->lookup<Type>("INTEGER");
+            if (auto cons = scope_->lookup_by_name<Constant>(ident_node->name())) return scope_->lookup_by_name<Type>("INTEGER");
             // vars have their type attached
-            if (auto var = scope_->lookup<Variable>(ident_node->name())) return var->type();
+            if (auto var = scope_->lookup_by_name<Variable>(ident_node->name())) return var->type();
             // so do refs
-            if (auto ref = scope_->lookup<Reference>(ident_node->name())) return scope_->lookup<Type>(ref->referenced_type_name());
+            if (auto ref = scope_->lookup_by_name<Reference>(ident_node->name())) return scope_->lookup_by_name<Type>(ref->referenced_type_name());
             // nothing else is admissible as an expression type
             logger_.error(node->pos(), "Couldn't determine expression type");
             return nullptr;
         }
         case NodeType::literal: { // all literals are integers
-            return scope_->lookup<Type>("INTEGER");
+            return scope_->lookup_by_name<Type>("INTEGER");
         }
         case NodeType::expression: {
             /* as outlined in scoper/symbols/types/typerules:
@@ -244,7 +244,7 @@ std::shared_ptr<Type> NodeVisitor::get_type(const std::shared_ptr<Node> &node) {
                 logger_.error(node->pos(), "Couldn't determine expression type");
                 return nullptr;
             }
-            return scope_->lookup<Type>("INTEGER"); // otherwise just integer
+            return scope_->lookup_by_name<Type>("INTEGER"); // otherwise just integer
         }
         default: {
             logger_.error(node->pos(), "Couldn't determine expression type");

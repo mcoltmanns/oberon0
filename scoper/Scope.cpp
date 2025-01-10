@@ -18,90 +18,94 @@
 // lookup a symbol by its name
 // you must provide the symbol you are expecting!
 template<>
-std::shared_ptr<Type> Scope::lookup(const std::string &name) {
+std::shared_ptr<Type> Scope::lookup_by_name(const std::string &name) {
     if (name == "INTEGER") return std::make_shared<Type>(BASIC_TYPE_INT);
     if (name == "BOOLEAN") return std::make_shared<Type>(BASIC_TYPE_BOOL);
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Type>(entry);
     }
-    if (outer_) return outer_->lookup<Type>(name);
+    if (outer_) return outer_->lookup_by_name<Type>(name);
     return nullptr;
 }
 template<>
-std::shared_ptr<Constant> Scope::lookup(const std::string &name) {
+std::shared_ptr<Constant> Scope::lookup_by_name(const std::string &name) {
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Constant>(entry);
     }
-    if (outer_) return outer_->lookup<Constant>(name);
+    if (outer_) return outer_->lookup_by_name<Constant>(name);
     return nullptr;
 }
 template<>
-std::shared_ptr<Module> Scope::lookup(const std::string &name) {
+std::shared_ptr<Module> Scope::lookup_by_name(const std::string &name) {
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Module>(entry);
     }
-    if (outer_) return outer_->lookup<Module>(name);
+    if (outer_) return outer_->lookup_by_name<Module>(name);
     return nullptr;
 }
 template<>
-std::shared_ptr<Procedure> Scope::lookup(const std::string &name) {
+std::shared_ptr<Procedure> Scope::lookup_by_name(const std::string &name) {
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Procedure>(entry);
     }
-    if (outer_) return outer_->lookup<Procedure>(name);
+    if (outer_) return outer_->lookup_by_name<Procedure>(name);
     return nullptr;
 }
 template<>
-std::shared_ptr<Reference> Scope::lookup(const std::string &name) {
+std::shared_ptr<Reference> Scope::lookup_by_name(const std::string &name) {
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Reference>(entry);
     }
-    if (outer_) return outer_->lookup<Reference>(name);
+    if (outer_) return outer_->lookup_by_name<Reference>(name);
     return nullptr;
 }
 template<>
-std::shared_ptr<Symbol> Scope::lookup(const std::string &name) {
+std::shared_ptr<Symbol> Scope::lookup_by_name(const std::string &name) {
     if (name == "INTEGER") return std::make_shared<Symbol>(BASIC_TYPE_INT);
     if (name == "BOOLEAN") return std::make_shared<Symbol>(BASIC_TYPE_BOOL);
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Symbol>(entry);
     }
-    if (outer_) return outer_->lookup<Symbol>(name);
+    if (outer_) return outer_->lookup_by_name<Symbol>(name);
     return nullptr;
 }
 template<>
-std::shared_ptr<Variable> Scope::lookup(const std::string &name) {
+std::shared_ptr<Variable> Scope::lookup_by_name(const std::string &name) {
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Variable>(entry);
     }
-    if (outer_) return outer_->lookup<Variable>(name);
+    if (outer_) return outer_->lookup_by_name<Variable>(name);
     return nullptr;
 }
 template<>
-std::shared_ptr<DerivedType> Scope::lookup(const std::string &name) {
+std::shared_ptr<DerivedType> Scope::lookup_by_name(const std::string &name) {
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<DerivedType>(entry);
     }
-    if (outer_) return outer_->lookup<DerivedType>(name);
+    if (outer_) return outer_->lookup_by_name<DerivedType>(name);
     return nullptr;
 }
 template<>
-std::shared_ptr<RecordType> Scope::lookup(const std::string &name) {
+std::shared_ptr<RecordType> Scope::lookup_by_name(const std::string &name) {
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<RecordType>(entry);
     }
-    if (outer_) return outer_->lookup<RecordType>(name);
+    if (outer_) return outer_->lookup_by_name<RecordType>(name);
     return nullptr;
 }
 template<>
-std::shared_ptr<ArrayType> Scope::lookup(const std::string &name) {
+std::shared_ptr<ArrayType> Scope::lookup_by_name(const std::string &name) {
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<ArrayType>(entry);
     }
-    if (outer_) return outer_->lookup<ArrayType>(name);
+    if (outer_) return outer_->lookup_by_name<ArrayType>(name);
     return nullptr;
 }
 
+std::shared_ptr<Symbol> Scope::lookup_by_index(const int index) { // not recursive
+    if (index < 0 || index >= static_cast<int>(table_.size())) return nullptr;
+    return table_.at(static_cast<long unsigned int>(index));
+}
 
 
 /*

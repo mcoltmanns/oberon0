@@ -86,8 +86,8 @@ void Parser::parse() {
     auto table = std::make_shared<Scope>(logger_, "outermost");
     auto scoper = Scoper(table, logger_);
     scoper.visit(mod);
-    auto module_scope = table->lookup<Module>("Sort0")->scope_;
-    auto init_proc = module_scope->lookup<Procedure>("Init");
+    auto module_scope = table->lookup_by_name<Module>("Sort0")->scope_;
+    auto init_proc = module_scope->lookup_by_name<Procedure>("Init");
     table->print(cout);
     auto typechecker = TypeChecker(init_proc->scope_, logger_);
     for (const auto& statement : init_proc->sseq_node_->children()) {

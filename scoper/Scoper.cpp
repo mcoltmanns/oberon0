@@ -38,7 +38,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                     // array lengths are known at compile time - any identifiers in these expressions should be constants that have already been declared
                     auto length = evaluate_const_expression(type_node->children().at(0));
                     auto base_type_name = dynamic_cast<IdentNode *>(type_node->children().at(1)->children().at(0).get())->name();
-                    auto base_type = scope_->lookup<Type>(base_type_name);
+                    auto base_type = scope_->lookup_by_name<Type>(base_type_name);
                     if (!base_type) {
                         stringstream ss;
                         ss << "Unknown type: \"" << base_type_name << "\"";
@@ -56,7 +56,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                     auto sym = RecordType(name_node->name(), node->pos(), 0);
                     for (const auto& field_list_node : type_node->children()) {
                         auto field_type_node = dynamic_cast<IdentNode *>(field_list_node->children().back()->children().front().get());
-                        auto field_type = scope_->lookup<Type>(field_type_node->name());
+                        auto field_type = scope_->lookup_by_name<Type>(field_type_node->name());
                         if (!field_type) {
                             logger_.error(node->pos(), "Unknown type: \"" + field_type_node->name() + "\"");
                             break;
@@ -71,7 +71,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                 }
                 case NodeType::type_raw: {
                     auto base_type_name = dynamic_cast<IdentNode*>(type_node->children().front().get())->name();
-                    auto base_type = scope_->lookup<Type>(base_type_name);
+                    auto base_type = scope_->lookup_by_name<Type>(base_type_name);
                     auto sym = DerivedType(name_node->name(), base_type, node->pos());
                     scope_->add(std::make_shared<DerivedType>(sym));
                     break;
@@ -85,7 +85,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
         case NodeType::dec_var: {
             auto ident_list_node = node->children().front(); // first nlaration is a list of identifiers
             auto type_name_node = dynamic_cast<IdentNode *>(node->children().back()->children().front().get());
-            auto var_type = scope_->lookup<Type>(type_name_node->name());
+            auto var_type = scope_->lookup_by_name<Type>(type_name_node->name());
             if (!var_type) {
                 logger_.error(node->pos(), "Unknown type: \"" + type_name_node->name() + "\"");
                 break;
@@ -122,7 +122,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                     // within a param list: first node is a list of identifiers, second node is a type_raw containing an identifier name which must be a previously declared type
                     // find out the type name for this set of params
                     auto type_name = dynamic_cast<IdentNode *>(param_list->children().at(1)->children().front().get())->name();
-                    auto proc_type = proc_scope->lookup<Type>(type_name);
+                    auto proc_type = proc_scope->lookup_by_name<Type>(type_name);
                     if (!proc_type) {
                         logger_.error(param_list->pos(), "Unknown type: \"" + type_name + "\"");
                     }
@@ -134,6 +134,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                                     auto ident = dynamic_cast<IdentNode*>(param_ident_node.get());
                                     auto sym = std::make_shared<Variable>(ident->name(), proc_type, ident->pos(), proc_type->size_); // variable named foo of type bar, declared at pos, copy vars have the same size as their base types
                                     proc_scope->add(sym);
+                                    proc_sym.params_.emplace(ident->name(), type_name);
                                 }
                                 break;
                             }
@@ -144,6 +145,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                                     auto ident = dynamic_cast<IdentNode *>(param_ident_node.get());
                                     auto sym = std::make_shared<Reference>(ident->name(), type_name, ident->pos()); // referenced named foo to a value of type bar, declared at pos
                                     proc_scope->add(sym);
+                                    proc_sym.params_.emplace(ident->name(), type_name);
                                 }
                                 break;
                             }

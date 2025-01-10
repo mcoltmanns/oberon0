@@ -33,7 +33,8 @@ public:
     ~Scope() = default;
 
     template<class T>
-    std::shared_ptr<T> lookup(const std::string &name); // pretty proud of this one!
+    std::shared_ptr<T> lookup_by_name(const std::string &name); // pretty proud of this one!
+    std::shared_ptr<Symbol> lookup_by_index(int index); // not recursive
 
     void print(std::ostream& s);
     void print(std::ostream &s, int tabs);

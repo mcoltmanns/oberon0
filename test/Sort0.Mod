@@ -18,7 +18,7 @@ rec: TESTRECORD;
 
 bool: BOOLEAN;
 
-PROCEDURE NoDecs;
+PROCEDURE NoDecs(VAR a: INTARRAYTWO);
 BEGIN
 END NoDecs;
 
@@ -32,6 +32,7 @@ BEGIN
     a[0] := 1;
     rec.bizz[a[0]] := 1;
     foo := 2;
+    NoDecs(bool);
     WHILE i < Dim DO
         a[i] := Dim-i;
         i := i + 1
