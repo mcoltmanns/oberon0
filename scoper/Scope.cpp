@@ -142,7 +142,7 @@ int Scope::get_next_offset() const {
 // but does check duplicate symbol uses within current scope
 // symbols in outer scopes are simply obscured during lookup
 void Scope::add(const std::shared_ptr<Symbol>& sym) {
-    for (auto entry : table_) {
+    for (const auto& entry : table_) {
         if (entry->name() == sym->name()) {
             logger_.error(sym->pos().operator*(), "Name already in use in this scope");
         }

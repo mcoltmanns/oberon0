@@ -76,23 +76,12 @@ unique_ptr<const Token> Parser::accept(TokenType token) {
     exit(EXIT_FAILURE); // this is lazy. in theory returning nullptrs would allow us to continue looking for errors but that needs more null checks. TODO later!
 }
 
-void Parser::parse() {
+std::shared_ptr<Node> Parser::parse() {
     /*while(expect(TokenType::kw_module)) {
         module()->print(cout);
     }
     accept(TokenType::eof);*/
-    auto mod = std::make_shared<Node>(*module());
-    mod->print(cout);
-    auto table = std::make_shared<Scope>(logger_, "outermost");
-    auto scoper = Scoper(table, logger_);
-    scoper.visit(mod);
-    auto module_scope = table->lookup_by_name<Module>("Sort0")->scope_;
-    auto init_proc = module_scope->lookup_by_name<Procedure>("Init");
-    table->print(cout);
-    auto typechecker = TypeChecker(init_proc->scope_, logger_);
-    for (const auto& statement : init_proc->sseq_node_->children()) {
-        typechecker.visit(statement);
-    }
+    return std::shared_ptr<Node>(std::move(module()));
 }
 
 std::unique_ptr<Node> Parser::module() {
@@ -270,9 +259,9 @@ std::unique_ptr<Node> Parser::statement() {
     else if(expect(TokenType::kw_while)) {
         return whileStatement();
     }
-    else if(expect(TokenType::kw_repeat)) {
+    /*else if(expect(TokenType::kw_repeat)) {
         return repeatStatement();
-    }
+    }*/
     // empty?
     else if(not expect(TokenType::semicolon) and not expect(TokenType::kw_end) and not expect(TokenType::kw_elsif) and not expect(TokenType::kw_else) and not expect(TokenType::kw_until)) {
         logger_.error(scanner_.peek()->start(), "unexpected token after statement");
@@ -327,7 +316,6 @@ std::unique_ptr<Node> Parser::ifStatement() {
     result->append_child(statementSequence());
     while(expect(TokenType::kw_elsif)) {
         auto elsif = std::make_unique<Node>(NodeType::if_alt, accept(TokenType::kw_elsif)->start());
-        expression();
         elsif->append_child(expression());
         accept(TokenType::kw_then);
         elsif->append_child(statementSequence());
@@ -336,7 +324,6 @@ std::unique_ptr<Node> Parser::ifStatement() {
     if(expect(TokenType::kw_else)) {
         auto def = std::make_unique<Node>(NodeType::if_default, accept(TokenType::kw_else)->start());
         def->append_child(statementSequence());
-        statementSequence();
         result->append_child(std::move(def));
     }
     accept(TokenType::kw_end);

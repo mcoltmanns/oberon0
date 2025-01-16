@@ -31,7 +31,7 @@ void Node::prepend_child(std::unique_ptr<Node> child) {
 void Node::print(std::ostream &stream, long unsigned int tabs) const {
     stream << string(tabs, '\t') << nodeType_ << "\n";
     for (const auto &child : children_) {
-        child->print(stream, tabs + 1);
+        if (child) child->print(stream, tabs + 1);
     }
     stream << string(tabs, '\t') << "end of " << nodeType_ << std::endl;
 }

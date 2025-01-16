@@ -130,6 +130,7 @@ long int Scoper::evaluate_const_expression(const std::shared_ptr<Node>& node) {
     }
 }
 
+// adds nodes to scope, building subscopes and typechecking where needed
 void Scoper::visit(const std::shared_ptr<Node>& node) {
     IdentNode* name_node;
     switch (node->type()) {
@@ -138,10 +139,6 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
             auto exp_node = node->children().at(1);
             TypeChecker tc(scope_, logger_);
             auto exp_type = tc.get_type(exp_node);
-            if (exp_type) {
-                node->print(cout);
-                exp_type->print(cout, 0);
-            }
             auto sym = Constant(name_node->name(), evaluate_const_expression(exp_node), node->pos());
             scope_->add(std::make_shared<Constant>(sym));
             break;
@@ -280,6 +277,9 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
             proc_sym.size_ += proc_scope->symtbl_size(); // add the size of the procedure's symbol table to the procedure size (AR size)
             // add procedure to scope (statements were added at proc_sym init)
             scope_->add(std::make_shared<Procedure>(proc_sym));
+            // check typing in the statement sequence node (must be done after the scope is processed)
+            auto tc = TypeChecker(proc_scope, logger_);
+            tc.visit(sseq_node);
             break;
         }
         case NodeType::module: {
@@ -297,6 +297,9 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
             for (const auto& dec : decs_node->children()) nv.visit(dec); // add declarations to module scope
             auto mod_sym = std::make_shared<Module>(ident_node->name(), ident_node->pos(), sseq_node, mod_scope); // init module symbol
             scope_->add(mod_sym); // add module symbol to scope
+            // check typing in the statement sequence node (must be done after new scope is built)
+            auto tc = TypeChecker(mod_scope, logger_);
+            tc.visit(sseq_node);
             break;
         }
         default: {

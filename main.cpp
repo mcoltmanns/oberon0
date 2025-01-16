@@ -8,6 +8,9 @@
 #include <string>
 #include "parser/Parser.h"
 #include "scanner/Scanner.h"
+#include "scoper/Scoper.h"
+#include "scoper/symbols/Module.h"
+#include "typechecker/TypeChecker.h"
 
 using std::cerr;
 using std::cout;
@@ -24,7 +27,11 @@ int main(const int argc, const char *argv[]) {
     logger.setLevel(LogLevel::DEBUG);
     Scanner scanner(filename, logger);
     Parser parser{scanner, logger};
-    parser.parse();
+    auto mod = parser.parse(); // get an ast
+    auto outer_scope = std::make_shared<Scope>(logger, ""); // declare empty outer scope
+    Scoper scoper = Scoper(outer_scope, logger); // get a scoper
+    scoper.visit(mod); // build the scope
+    outer_scope->print(cout);
     string status = (logger.getErrorCount() == 0 ? "complete" : "failed");
     logger.info("Compilation " + status + ": " +
                 to_string(logger.getErrorCount()) + " error(s), " +

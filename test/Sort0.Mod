@@ -18,7 +18,7 @@ rec: TESTRECORD;
 
 bool: BOOLEAN;
 
-PROCEDURE NoDecs(VAR a: INTARRAYTWO);
+PROCEDURE NoDecs(VAR a: BOOLEAN);
 BEGIN
 END NoDecs;
 
@@ -28,11 +28,6 @@ TYPE INTARRAYTWO = ARRAY Dim + 1 OF INTEGER;
 VAR i: INTEGER;
 BEGIN
     i := 0;
-    bool := 1;
-    a[0] := 1;
-    rec.bizz[a[0]] := 1;
-    foo := 2;
-    NoDecs(bool);
     WHILE i < Dim DO
         a[i] := Dim-i;
         i := i + 1

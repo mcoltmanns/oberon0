@@ -69,7 +69,7 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
             // so do refs
             if (auto ref = scope_->lookup_by_name<Reference>(ident_node->name())) return scope_->lookup_by_name<Type>(ref->referenced_type_name());
             // nothing else is admissible as an expression type
-            logger_.error(node->pos(), "Couldn't determine expression type");
+            logger_.error(node->pos(), "Couldn't determine identifier type");
             return nullptr;
         }
         case NodeType::literal: { // all literals are integers
@@ -108,9 +108,13 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
                 return nullptr;
             }
             if (!second) return get_type(first); // only one non-op terminal
-            // more than one non-op terminal - must be integer or things are bad
-            if (get_type(first)->name() != "INTEGER") {
-                logger_.error(node->pos(), "Couldn't determine expression type");
+            // more than one non-op terminal - both must be integer or things are bad
+            auto first_type = get_type(first)->name();
+            auto second_type = get_type(second)->name();
+            if (first_type != "INTEGER" || second_type != "INTEGER") {
+                stringstream ss;
+                ss << "Incompatible types in expression: \"" << first_type << "\" and \"" << second_type << "\"";
+                logger_.error(node->pos(), ss.str());
                 return nullptr;
             }
             return scope_->lookup_by_name<Type>("INTEGER"); // otherwise just integer
@@ -121,6 +125,9 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
         }
     }
 }
+
+// this is for making sure that typing is valid in statement sequences
+// typing in declarations is checked by the scoper
 void TypeChecker::visit(const std::shared_ptr<Node> &node) {
     switch (node->type()) {
         case NodeType::assignment: {
@@ -163,14 +170,63 @@ void TypeChecker::visit(const std::shared_ptr<Node> &node) {
             break;
         }
         case NodeType::if_statement: {
+            // ifs are always: expression, seq, { if_alt }, [ if_default ]
+            // first expression must be an int or bool
+            // sequence must be visited
+            // for every if_alt: expression must be an int or bool, sequence must be visited
+            // for if_default: sequence must be visited
+            auto cond = node->children().at(0);
+            if (get_type(cond)->name() != "INTEGER" && get_type(cond)->name() != "BOOLEAN") {
+                logger_.error(cond->pos(), "Invalid expression type in conditional");
+            }
+            visit(node->children().at(1)); // make sure the sequence checks out
+            // parse the remaining stuff
+            for (const auto& child : node->children() | std::views::drop(2)) {
+                switch (child->type()) {
+                    case NodeType::if_alt: {
+                        cond = child->children().at(0); // check alternate condition type
+                        if (get_type(cond)->name() != "INTEGER" && get_type(cond)->name() != "BOOLEAN") {
+                            logger_.error(cond->pos(), "Invalid expression type in conditional");
+                        }
+                        visit(child->children().at(1)); // check validity of alternate condition exec
+                        break;
+                    }
+                    case NodeType::if_default: {
+                        visit(child->children().at(0)); // check validity of default condition exec
+                        break;
+                    }
+                    default: {
+                        logger_.error(child->pos(), "Invalid conditional");
+                    }
+                }
+            }
             break;
         }
-        case NodeType::repeat_statement: {
+        /*case NodeType::repeat_statement: {
 
-        }
+            break;
+        }*/
         case NodeType::while_statement: {
+            // while is always expression, statementsequence
+            auto cond = node->children().at(0);
+            auto cond_type = get_type(cond);
+            if (!cond_type || (cond_type->name() != "INTEGER" && cond_type->name() != "BOOLEAN")) {
+                logger_.error(cond->pos(), "Invalid expression type in loop condition");
+            }
+            visit(node->children().at(1));
             break;
         }
-        default:;
+        case NodeType::statement_seq: {
+            for (const auto& child : node->children()) {
+                visit(child);
+            }
+            break;
+        }
+        case NodeType::unknown: {
+            break;
+        }
+        default: {
+            logger_.error(node->pos(), "Unable to check type");
+        }
     }
 }

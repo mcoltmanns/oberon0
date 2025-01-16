@@ -62,7 +62,8 @@ private:
 public:
     explicit Parser(Scanner &scanner, Logger &logger) : scanner_(scanner), logger_(logger) {};
     ~Parser() = default;
-    void parse();
+
+    std::shared_ptr<Node> parse();
 
     bool expect(TokenType token);
 
