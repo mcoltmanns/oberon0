@@ -18,6 +18,7 @@
 
 // evaluate a constant expression
 long int Scoper::evaluate_const_expression(const std::shared_ptr<Node>& node) {
+    if (node == nullptr) return 0;
     switch (node->type()) {
         // literals are easy
         case NodeType::literal: {
@@ -132,6 +133,7 @@ long int Scoper::evaluate_const_expression(const std::shared_ptr<Node>& node) {
 
 // adds nodes to scope, building subscopes and typechecking where needed
 void Scoper::visit(const std::shared_ptr<Node>& node) {
+    if (node == nullptr) return;
     IdentNode* name_node;
     switch (node->type()) {
         case NodeType::dec_const: { // constant declaration
@@ -294,7 +296,8 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
             auto sseq_node = node->children().at(2); // find statement sequence
             auto mod_scope = std::make_shared<Scope>(logger_, scope_, ident_node->name()); // initialize module scope
             auto nv = Scoper(mod_scope, logger_); // init visitor to build module scope
-            for (const auto& dec : decs_node->children()) nv.visit(dec); // add declarations to module scope
+            for (const auto& dec : decs_node->children())
+                nv.visit(dec); // add declarations to module scope
             auto mod_sym = std::make_shared<Module>(ident_node->name(), ident_node->pos(), sseq_node, mod_scope); // init module symbol
             scope_->add(mod_sym); // add module symbol to scope
             // check typing in the statement sequence node (must be done after new scope is built)

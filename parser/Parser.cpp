@@ -388,15 +388,20 @@ std::unique_ptr<Node> Parser::expression() {
 std::unique_ptr<Node> Parser::simpleExpression() {
     auto result = std::make_unique<Node>(NodeType::expression, scanner_.peek()->start());
     unique_ptr<OperatorNode> lead = nullptr;
+    bool has_lead = false;
+    bool has_op = false;
     if(expect(TokenType::op_plus)) {
         lead = std::make_unique<OperatorNode>(OperatorType::PLUS, accept(TokenType::op_plus)->start());
+        has_lead = true;
     }
     else if(expect(TokenType::op_minus)) {
         lead = std::make_unique<OperatorNode>(OperatorType::MINUS, accept(TokenType::op_minus)->start());
+        has_lead = true;
     }
     auto left = term();
     unique_ptr<OperatorNode> op = nullptr;
     while(expect(TokenType::op_plus) or expect(TokenType::op_minus) or expect(TokenType::op_or)) {
+        has_op = true;
         if(expect(TokenType::op_plus)) {
             op = std::make_unique<OperatorNode>(OperatorType::PLUS, accept(TokenType::op_plus)->start());
         }
@@ -409,9 +414,9 @@ std::unique_ptr<Node> Parser::simpleExpression() {
         result->append_child(std::move(op));
         result->append_child(term());
     }
-    if (!op && !lead) return left;
+    if (!has_op && !has_lead) return left;
     result->prepend_child(std::move(left));
-    if (lead) result->prepend_child(std::move(lead));
+    if (has_lead) result->prepend_child(std::move(lead));
     return result;
 }
 

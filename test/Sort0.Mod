@@ -2,8 +2,7 @@
 MODULE Sort0;
 
 (* Length of the array to be sorted. *)
-CONST Dim = 1;
-otherConst = Dim + (-Dim);
+CONST Dim = 10;
 
 (* Array type *)
 TYPE INTARRAY = ARRAY Dim OF INTEGER;
