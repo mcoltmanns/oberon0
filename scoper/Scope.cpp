@@ -9,7 +9,7 @@
 #include "symbols/Constant.h"
 #include "symbols/Module.h"
 #include "symbols/Procedure.h"
-#include "symbols/Reference.h"
+#include "symbols/PassedParam.h"
 #include "symbols/Variable.h"
 #include "symbols/types/BaseTypes.h"
 #include "symbols/types/ConstructedTypes.h"
@@ -19,8 +19,8 @@
 // you must provide the symbol you are expecting!
 template<>
 std::shared_ptr<Type> Scope::lookup_by_name(const std::string &name) {
-    if (name == "INTEGER") return std::make_shared<Type>(BASIC_TYPE_INT);
-    if (name == "BOOLEAN") return std::make_shared<Type>(BASIC_TYPE_BOOL);
+    if (name == "INTEGER") return BASIC_TYPE_INT;
+    if (name == "BOOLEAN") return BASIC_TYPE_BOOL;
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Type>(entry);
     }
@@ -52,17 +52,17 @@ std::shared_ptr<Procedure> Scope::lookup_by_name(const std::string &name) {
     return nullptr;
 }
 template<>
-std::shared_ptr<Reference> Scope::lookup_by_name(const std::string &name) {
+std::shared_ptr<PassedParam> Scope::lookup_by_name(const std::string &name) {
     for (auto entry : table_) {
-        if (entry->name() == name) return std::dynamic_pointer_cast<Reference>(entry);
+        if (entry->name() == name) return std::dynamic_pointer_cast<PassedParam>(entry);
     }
-    if (outer_) return outer_->lookup_by_name<Reference>(name);
+    if (outer_) return outer_->lookup_by_name<PassedParam>(name);
     return nullptr;
 }
 template<>
 std::shared_ptr<Symbol> Scope::lookup_by_name(const std::string &name) {
-    if (name == "INTEGER") return std::make_shared<Symbol>(BASIC_TYPE_INT);
-    if (name == "BOOLEAN") return std::make_shared<Symbol>(BASIC_TYPE_BOOL);
+    if (name == "INTEGER") return BASIC_TYPE_INT;
+    if (name == "BOOLEAN") return BASIC_TYPE_BOOL;
     for (auto entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Symbol>(entry);
     }

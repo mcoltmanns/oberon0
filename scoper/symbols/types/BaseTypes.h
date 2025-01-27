@@ -4,12 +4,15 @@
 
 #ifndef INTEGERTYPE_H
 #define INTEGERTYPE_H
+
 #include "Type.h"
 
 // for now we assume all base types take up 1 cell in storage
 class IntegerType final : public Type {
 public:
-    explicit IntegerType() : Type("INTEGER", 1) {};
+    explicit IntegerType() : Type("INTEGER", 1) {
+        kind_ = BASE_INT;
+    };
     virtual ~IntegerType() = default;
 
     void print(std::ostream &s, int tabs) override;
@@ -28,16 +31,18 @@ public:
 // 0 is false, nonzero is true
 class BooleanType final : public Type {
 public:
-    explicit BooleanType() : Type("BOOLEAN", 1) {};
+    explicit BooleanType() : Type("BOOLEAN", 1) {
+        kind_ = BASE_BOOL;
+    };
     virtual ~BooleanType() = default;
 
     void print(std::ostream &s, int tabs) override;
 };
 
 // global basic types - these are static and should NEVER! be declared anywhere else
-static auto BASIC_TYPE_INT = IntegerType();
+inline auto BASIC_TYPE_INT = std::make_shared<IntegerType>();
 /*static auto BASIC_TYPE_STRING = StringType();*/
-static auto BASIC_TYPE_BOOL = BooleanType();
+inline auto BASIC_TYPE_BOOL = std::make_shared<BooleanType>();
 
 
 #endif //INTEGERTYPE_H

@@ -14,7 +14,9 @@ private:
     std::unordered_map<std::string, std::shared_ptr<Type>> fields_;
 
 public:
-    RecordType(std::string name, FilePos pos, const int size) : Type(std::move(name), std::move(pos), size) {}
+    RecordType(std::string name, FilePos pos, const int size) : Type(std::move(name), std::move(pos), size) {
+        kind_ = RECORD_TYPE;
+    }
     ~RecordType() override;
 
     std::unordered_map<std::string, std::shared_ptr<Type>>& fields() { return fields_; }
@@ -26,8 +28,11 @@ private:
     std::shared_ptr<Type> base_type_;
 
 public:
-    ArrayType(std::string name, int length, std::shared_ptr<Type> base_type, FilePos pos, int size) : Type(name, pos, size), length_(length), base_type_(std::move(base_type)) {}
-    virtual ~ArrayType();
+    ArrayType(std::string name, int length, std::shared_ptr<Type> base_type, FilePos pos, int size) : Type(name, pos, size), length_(length), base_type_(std::move(base_type)) {
+        kind_ = ARRAY_TYPE;
+    }
+
+    ~ArrayType() override;
 
     int length() const { return length_; }
     std::shared_ptr<Type> base_type() const { return base_type_; }
@@ -40,8 +45,12 @@ private:
     std::shared_ptr<Type> base_type_;
 
 public:
-    DerivedType(std::string name, std::shared_ptr<Type> base_type, FilePos pos) : Type(std::move(name), std::move(pos), base_type->size_) {}
-    virtual ~DerivedType();
+    DerivedType(std::string name, const std::shared_ptr<Type> &base_type, FilePos pos) : Type(std::move(name), std::move(pos), base_type->size_) {
+        kind_ = DERIVED_TYPE;
+        base_type_ = std::move(base_type);
+    }
+
+    ~DerivedType() override;
 
     std::shared_ptr<Type> base_type() const { return base_type_; }
 };

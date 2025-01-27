@@ -10,7 +10,7 @@
 
 #include "scoper/symbols/Constant.h"
 #include "scoper/symbols/Procedure.h"
-#include "scoper/symbols/Reference.h"
+#include "scoper/symbols/PassedParam.h"
 #include "scoper/symbols/Variable.h"
 #include "scoper/symbols/types/ConstructedTypes.h"
 
@@ -23,13 +23,14 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
             if (ident_node->selector_block()) { // identifier has a selector block?
                 // only vars and refs can have selector blocks, so:
                 auto selected_var = scope_->lookup_by_name<Variable>(ident_node->name());
-                auto selected_ref = scope_->lookup_by_name<Reference>(ident_node->name());
+                auto selected_ref = scope_->lookup_by_name<PassedParam>(ident_node->name());
                 if (selected_var) {
                     std::shared_ptr<Type> type = selected_var->type();
                     for (const auto& child : ident_node->selector_block()->children()) {
                         if (auto array = std::dynamic_pointer_cast<ArrayType>(type); array && child->type() == NodeType::sel_index) { // type is an array and we are selecting an index and we are using an integer as the index
                             if (get_type(child->children().front())->name() != "INTEGER") {
                                 logger_.error(child->children().front()->pos(), "Array indexes must be of type INTEGER");
+                                return nullptr;
                             }
                             type = array->base_type();
                         }
@@ -67,7 +68,7 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
             // vars have their type attached
             if (auto var = scope_->lookup_by_name<Variable>(ident_node->name())) return var->type();
             // so do refs
-            if (auto ref = scope_->lookup_by_name<Reference>(ident_node->name())) return scope_->lookup_by_name<Type>(ref->referenced_type_name());
+            if (auto ref = scope_->lookup_by_name<PassedParam>(ident_node->name())) return scope_->lookup_by_name<Type>(ref->referenced_type_name());
             // nothing else is admissible as an expression type
             logger_.error(node->pos(), "Couldn't determine identifier type");
             return nullptr;
@@ -109,11 +110,15 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
             }
             if (!second) return get_type(first); // only one non-op terminal
             // more than one non-op terminal - both must be integer or things are bad
-            auto first_type = get_type(first)->name();
-            auto second_type = get_type(second)->name();
-            if (first_type != "INTEGER" || second_type != "INTEGER") {
+            auto first_type = get_type(first);
+            auto second_type = get_type(second);
+            if (!first_type || !second_type) {
+                logger_.error(node->pos(), "Couldn't determine expression type");
+                return nullptr;
+            }
+            if (first_type->name() != "INTEGER" || second_type->name() != "INTEGER") {
                 stringstream ss;
-                ss << "Incompatible types in expression: \"" << first_type << "\" and \"" << second_type << "\"";
+                ss << "Incompatible types in expression: \"" << first_type->name() << "\" and \"" << second_type->name() << "\"";
                 logger_.error(node->pos(), ss.str());
                 return nullptr;
             }
@@ -154,14 +159,15 @@ void TypeChecker::visit(const std::shared_ptr<Node> &node) {
                 logger_.error(node->pos(), "Procedure \"" + proc_name + "\" was not declared in this scope");
                 break;
             }
-            int param_no = 0;
+            long unsigned int param_no = 0;
             for (const auto& child : node->children() | std::views::drop(1)) {
-                if (param_no >= static_cast<int>(proc_sym->params_.size())) {
+                if (param_no >= proc_sym->params_.size()) {
                     logger_.error(child->pos(), "Too many parameters in procedure call");
                     break;
                 }
-                auto passed_type = get_type(child);
-                auto receiving_type = scope_->lookup_by_name<Type>(proc_sym->params_.at(proc_sym->scope_->lookup_by_index(param_no)->name()));
+                auto passed_type = get_type(child); // type of the argument being passed
+                auto receiving_type_name = proc_sym->params_.at(param_no).second;
+                auto receiving_type = scope_->lookup_by_name<Type>(proc_sym->params_.at(param_no).second);
                 if (receiving_type && passed_type && passed_type->name() != receiving_type->name()) {
                     logger_.error(child->pos(), "Parameter type mismatch in procedure call (passed \"" + passed_type->name() + "\" but expected \"" + receiving_type->name() + "\")");
                 }
@@ -176,7 +182,12 @@ void TypeChecker::visit(const std::shared_ptr<Node> &node) {
             // for every if_alt: expression must be an int or bool, sequence must be visited
             // for if_default: sequence must be visited
             auto cond = node->children().at(0);
-            if (get_type(cond)->name() != "INTEGER" && get_type(cond)->name() != "BOOLEAN") {
+            auto cond_type = get_type(cond);
+            if (!cond_type) {
+                logger_.error(node->pos(), "Could not conditional expression type");
+                return;
+            }
+            if (cond_type->name() != "INTEGER" && cond_type->name() != "BOOLEAN") {
                 logger_.error(cond->pos(), "Invalid expression type in conditional");
             }
             visit(node->children().at(1)); // make sure the sequence checks out

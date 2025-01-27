@@ -27,6 +27,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # define DEBUG macro
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     add_definitions(-D_DEBUG)
+    set(-DLLVM_USE_SPLIT_DWARF ON) # apparently this can speed up compilation - but not sure if it really works
 endif ()
 
 # add the cmake folder of the project for extension modules
@@ -80,8 +81,8 @@ set(SCOPER_SOURCES
         scoper/symbols/Module.h
         scoper/Scope.cpp
         scoper/Scope.h
-        scoper/symbols/Reference.cpp
-        scoper/symbols/Reference.h
+        scoper/symbols/PassedParam.cpp
+        scoper/symbols/PassedParam.h
         scoper/Scoper.cpp
         scoper/Scoper.h)
 
@@ -89,7 +90,13 @@ set(TYPECHECKER_SOURCES
         typechecker/TypeChecker.cpp
         typechecker/TypeChecker.h)
 
-set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES} ${SCOPER_SOURCES} ${TYPECHECKER_SOURCES})
+set(CODEGEN_SOURCES
+        codegen/Generator.cpp
+        codegen/Generator.h)
+
+set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES} ${SCOPER_SOURCES} ${TYPECHECKER_SOURCES} ${CODEGEN_SOURCES}
+        codegen/LLVMMachine.cpp
+        codegen/LLVMMachine.h)
 
 add_executable(${OBERON0_C} main.cpp ${ALL_SOURCES})
 

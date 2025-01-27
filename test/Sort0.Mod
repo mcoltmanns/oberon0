@@ -3,15 +3,18 @@ MODULE Sort0;
 
 (* Length of the array to be sorted. *)
 CONST Dim = 10;
+AnotherConstant = -6 * 3;
 
 (* Array type *)
-TYPE INTARRAY = ARRAY Dim OF INTEGER;
+TYPE TESTRECORD = RECORD foo, bar : INTEGER END;
+INTARRAY = ARRAY Dim OF INTEGER;
 FAKEINT = INTEGER;
-
-TESTRECORD = RECORD foo, bar : INTEGER; bizz : INTARRAY END;
 
 (* Array to be sorted. *)
 VAR a: INTARRAY;
+b: FAKEINT;
+c: INTEGER;
+d: INTEGER;
 
 rec: TESTRECORD;
 
@@ -22,7 +25,7 @@ BEGIN
 END NoDecs;
 
 (* Initializes the array. *)
-PROCEDURE Init(VAR foo: INTEGER; VAR fizz: INTARRAY);
+PROCEDURE Init();
 TYPE INTARRAYTWO = ARRAY Dim + 1 OF INTEGER;
 VAR i: INTEGER;
 BEGIN
@@ -119,5 +122,7 @@ END QuickSort;
 (* Main program. *)
 BEGIN
     Init;
-    QuickSort
+    QuickSort;
+    d := 5;
+    c := d * 5 DIV c;
 END Sort0.

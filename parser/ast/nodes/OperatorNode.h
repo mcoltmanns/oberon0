@@ -6,7 +6,7 @@
 #define OPERATORNODE_H
 #include "Node.h"
 
-enum OperatorType : char { EQ, NEQ, LT, LEQ, GT, GEQ, AND, OR, NOT, TIMES, DIV, MOD, PLUS, MINUS };
+enum OperatorType : char { EQ, NEQ, LT, LEQ, GT, GEQ, AND, OR, NOT, TIMES, DIV, MOD, PLUS, PLUS_UNARY, MINUS, MINUS_UNARY };
 std::ostream& operator<<(std::ostream &stream, OperatorType opType);
 
 class OperatorNode final : public Node {

@@ -7,6 +7,7 @@
 #include <utility>
 
 Procedure::Procedure(std::string name, const FilePos &pos, std::shared_ptr<Node> sseq_node, std::shared_ptr<Scope> procedure_scope): Symbol(std::move(name), pos, 1), sseq_node_(std::move(sseq_node)), scope_(std::move(procedure_scope)) {
+    kind_ = PROCEDURE;
 }
 
 void Procedure::print(std::ostream& s, const int tabs) {

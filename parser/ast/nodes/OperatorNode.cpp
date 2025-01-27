@@ -46,8 +46,14 @@ std::ostream & operator<<(std::ostream &stream, OperatorType opType) {
         case PLUS:
             result = "PLUS";
         break;
+        case PLUS_UNARY:
+            result = "PLUS_UNARY";
+        break;
         case MINUS:
             result = "MINUS";
+        break;
+        case MINUS_UNARY:
+            result = "MINUS_UNARY";
         break;
         default:
             result = "UNKNOWN";

@@ -15,12 +15,12 @@
 
 class Scope {
 private:
-    std::vector<std::shared_ptr<Symbol>> table_; // many people need to see the symbols, hence shared
     int current_offset_ = 0;
 
 public:
     Logger& logger_;
     std::shared_ptr<Scope> outer_;
+    std::vector<std::shared_ptr<Symbol>> table_; // many people need to see the symbols, hence shared
     std::string name_;
 
     explicit Scope(Logger& logger, std::string name) : logger_(logger), name_(std::move(name)) {

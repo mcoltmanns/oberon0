@@ -5,6 +5,7 @@
 #include "Type.h"
 
 Type::Type(const std::string &name, const int size) : Symbol(name, size) {
+    kind_ = SymbolKind::TYPE;
 }
 
 Type::~Type() {}
