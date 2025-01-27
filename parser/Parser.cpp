@@ -81,7 +81,7 @@ std::shared_ptr<Node> Parser::parse() {
         module()->print(cout);
     }
     accept(TokenType::eof);*/
-    return std::shared_ptr<Node>(std::move(module()));
+    return std::shared_ptr<Node>(module());
 }
 
 std::unique_ptr<Node> Parser::module() {
