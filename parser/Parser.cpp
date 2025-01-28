@@ -51,7 +51,21 @@ unique_ptr<LiteralNode> Parser::number() {
     const auto token = scanner_.next();
     const Token* tokenPtr = token.get();
     long val = static_cast<const LiteralToken<long>*>(tokenPtr)->value();
-    return std::make_unique<LiteralNode>(val, start);
+    return std::make_unique<LiteralNode>(val, false, start);
+}
+
+unique_ptr<LiteralNode> Parser::boolean() {
+    auto start = scanner_.peek()->start();
+    if (not expect(TokenType::boolean_literal)) {
+        stringstream ss;
+        ss << "expected a boolean but got a " << scanner_.peek()->type() << " instead";
+        logger_.error(scanner_.peek()->start(), ss.str());
+        return nullptr;
+    }
+    const auto token = scanner_.next();
+    const Token* tokenPtr = token.get();
+    long val = static_cast<const LiteralToken<long>*>(tokenPtr)->value() ? 1 : 0;
+    return std::make_unique<LiteralNode>(val, true, start);
 }
 
 // expect a certain token type
@@ -382,8 +396,8 @@ std::unique_ptr<Node> Parser::expression() {
         result->append_child(std::move(right));
         return result;
     }
-    result->append_child(std::move(left));
-    return result;
+    //result->append_child(std::move(left));
+    return left;
 }
 
 std::unique_ptr<Node> Parser::simpleExpression() {
@@ -396,7 +410,8 @@ std::unique_ptr<Node> Parser::simpleExpression() {
         lead = std::make_unique<OperatorNode>(OperatorType::MINUS_UNARY, accept(TokenType::op_minus)->start());
     }
     if (lead) result->append_child(std::move(lead));
-    result->append_child(term());
+    auto left = term();
+    unique_ptr<Node> right = nullptr;
     unique_ptr<OperatorNode> op = nullptr;
     while(expect(TokenType::op_plus) or expect(TokenType::op_minus) or expect(TokenType::op_or)) {
         if(expect(TokenType::op_plus)) {
@@ -408,9 +423,13 @@ std::unique_ptr<Node> Parser::simpleExpression() {
         else if(expect(TokenType::op_or)) {
             op = std::make_unique<OperatorNode>(OperatorType::OR, accept(TokenType::op_or)->start());
         }
-        result->append_child(std::move(op));
-        result->append_child(term());
+        right = term();
     }
+    if (!lead && !op)
+        return left;
+    result->append_child(std::move(left));
+    result->append_child(std::move(op));
+    result->append_child(std::move(right));
     return result;
 }
 
@@ -435,8 +454,7 @@ std::unique_ptr<Node> Parser::term() {
         right = factor();
     }
     if (!op) {
-        result->append_child(std::move(left));
-        return result;
+        return left;
     }
     result->append_child(std::move(left));
     result->append_child(std::move(op));
@@ -449,13 +467,12 @@ std::unique_ptr<Node> Parser::factor() {
     if(expect(TokenType::const_ident)) {
         // factor is an identifier with selectors
         auto id = ident();
-        result->append_child(std::move(id)); // yucky yucky pointer wrangling! but if it's stupid and it works, it isn't stupid
-        auto id_moved = std::dynamic_pointer_cast<IdentNode>(result->children().front());
         auto sel = selector();
         if (sel != nullptr) {
-            result->append_child(std::move(sel));
-            id_moved->set_selector(result->children().back());
+            //result->append_child(std::move(sel)); // don't store selectors in the ast - instead store them attached to the node they act on. this makes life a little easier down the line
+            id->set_selector(std::move(sel));
         }
+        return id;
     }
     else if(expect(TokenType::lparen)) {
         // factor is an expressionNode with no leading operator
@@ -470,8 +487,10 @@ std::unique_ptr<Node> Parser::factor() {
         result->append_child(std::move(op));
         result->append_child(factor());
     }
+    else if (expect(TokenType::boolean_literal)) {
+        return boolean();
+    }
     else {
-        // factor is a number literal
         return number();
     }
     return result;

@@ -8,6 +8,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <llvm/IR/Type.h>
+#include <llvm/IR/Value.h>
 
 #include "global.h"
 #include "parser/ast/nodes/Node.h"
@@ -25,7 +27,8 @@ public:
     int size_; // how many memory units does this thing take up?
     int offset_; // at what point in the scope AR is this thing kept?
     std::vector<std::shared_ptr<Node>> uses_; // where in the program is this used?
-    SymbolKind kind_ = SymbolKind::SYMBOL;
+    SymbolKind kind_ = SymbolKind::SYMBOL; // what kind of symbol is this?
+    llvm::Type *llvm_type = nullptr; // what kind of thing is this according to llvm?
 
     Symbol(std::string name, FilePos pos, const int size) : name_(std::move(name)), declared_at_(std::move(pos)), size_(size), offset_(0) {}
 

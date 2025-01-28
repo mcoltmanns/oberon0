@@ -16,7 +16,7 @@
 class Procedure final : public Symbol {
 public:
     std::shared_ptr<Node> sseq_node_; // which statement sequence does this procedure execute?
-    std::shared_ptr<Scope> scope_;
+    std::shared_ptr<Scope> scope_; // first n elements of procedure scopes are symbols of the params - find reference/copy info here
     std::vector<std::pair<string, string>> params_; // list of parameter names and their type names
     llvm::FunctionType* llvm_sig;
     llvm::FunctionCallee llvm_callee;

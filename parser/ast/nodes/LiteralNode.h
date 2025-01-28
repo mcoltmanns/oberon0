@@ -10,11 +10,13 @@
 class LiteralNode final : public Node {
 private:
     long value_;
+    bool boolean_;
 
 public:
-    LiteralNode(const long value, const FilePos &pos) : Node(NodeType::literal, pos), value_(value) {};
+    LiteralNode(const long value, const bool boolean, const FilePos &pos) : Node(NodeType::literal, pos), value_(value), boolean_(boolean) {};
 
     long value() const;
+    bool is_bool() const { return boolean_; }
 
     void print(std::ostream &stream, long unsigned int tabs = 0) const override;
 };
