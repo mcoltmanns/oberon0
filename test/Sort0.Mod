@@ -8,11 +8,11 @@ AnotherConstant = -6 * 3;
 (* Array type *)
 TYPE TESTRECORD = RECORD foo, bar : INTEGER END;
 INTARRAY = ARRAY Dim OF INTEGER;
-FAKEINT = INTEGER;
+STRUCTARRAY = ARRAY Dim OF TESTRECORD;
 
 (* Array to be sorted. *)
 VAR a: INTARRAY;
-b: FAKEINT;
+b: STRUCTARRAY;
 c: INTEGER;
 d: INTEGER;
 
@@ -20,7 +20,7 @@ rec: TESTRECORD;
 
 bool: BOOLEAN;
 
-PROCEDURE NoDecs(VAR a: BOOLEAN);
+PROCEDURE NoDecs(a: BOOLEAN);
 BEGIN
 END NoDecs;
 
@@ -121,8 +121,8 @@ END QuickSort;
 
 (* Main program. *)
 BEGIN
+    Swap(c, d);
+    NoDecs(bool);
     Init;
     QuickSort;
-    d := 5;
-    c := d * 5 DIV c;
 END Sort0.

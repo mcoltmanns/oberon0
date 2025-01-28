@@ -180,7 +180,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                         }
                         for (const auto& ident_node : field_list_node->children().front()->children()) {
                             sym.size_ += field_type->size_; // record size is just the sum of the sizes of its fields
-                            sym.fields().emplace(dynamic_cast<IdentNode *>(ident_node.get())->name(), field_type);
+                            sym.fields().push_back(std::pair(dynamic_cast<IdentNode *>(ident_node.get())->name(), field_type));
                         }
                     }
                     scope_->add(std::make_shared<RecordType>(sym));

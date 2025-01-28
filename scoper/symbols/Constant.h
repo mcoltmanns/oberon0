@@ -16,6 +16,7 @@ private:
     long value_;
 
 public:
+    llvm::Value *llvm_ptr = nullptr;
     Constant(std::string name, const long value, FilePos pos) : Symbol(std::move(name), std::move(pos), CONSTANT_SIZE), value_(value) {
         kind_ = SymbolKind::CONSTANT;
     }

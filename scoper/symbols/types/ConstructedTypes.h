@@ -11,7 +11,7 @@
 
 class RecordType final : public Type {
 private:
-    std::unordered_map<std::string, std::shared_ptr<Type>> fields_;
+    std::vector<std::pair<std::string, std::shared_ptr<Type>>> fields_; // vector of fields - their names and their types
 
 public:
     RecordType(std::string name, FilePos pos, const int size) : Type(std::move(name), std::move(pos), size) {
@@ -19,7 +19,9 @@ public:
     }
     ~RecordType() override;
 
-    std::unordered_map<std::string, std::shared_ptr<Type>>& fields() { return fields_; }
+    std::vector<std::pair<std::string, std::shared_ptr<Type>>> &fields() { return fields_; }
+    std::shared_ptr<Type> get_field_type_by_name(const std::string &name);
+    int get_field_index_by_name(const std::string &name);
 };
 
 class ArrayType final : public Type {
@@ -34,8 +36,8 @@ public:
 
     ~ArrayType() override;
 
-    int length() const { return length_; }
-    std::shared_ptr<Type> base_type() const { return base_type_; }
+    [[nodiscard]] int length() const { return length_; }
+    [[nodiscard]] std::shared_ptr<Type> base_type() const { return base_type_; }
 };
 
 // for things like TYPE DERIVED = INTEGER

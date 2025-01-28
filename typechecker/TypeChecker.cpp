@@ -14,6 +14,12 @@
 #include "scoper/symbols/Variable.h"
 #include "scoper/symbols/types/ConstructedTypes.h"
 
+bool TypeChecker::types_compatible(const std::string &a, const std::string &b) {
+    if (a == b) return true; // identical types are compatible
+    if ((a == "INTEGER" || a == "BOOLEAN") && (b == "INTEGER" || b == "BOOLEAN")) return true; // integers and booleans are compatible
+    return false; // nothing else is
+}
+
 // find the type of a node
 std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
     switch (node->type()) {
@@ -23,7 +29,7 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
             if (ident_node->selector_block()) { // identifier has a selector block?
                 // only vars and refs can have selector blocks, so:
                 auto selected_var = scope_->lookup_by_name<Variable>(ident_node->name());
-                auto selected_ref = scope_->lookup_by_name<PassedParam>(ident_node->name());
+                auto selected_param = scope_->lookup_by_name<PassedParam>(ident_node->name());
                 if (selected_var) {
                     std::shared_ptr<Type> type = selected_var->type();
                     for (const auto& child : ident_node->selector_block()->children()) {
@@ -35,7 +41,7 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
                             type = array->base_type();
                         }
                         else if (auto record = std::dynamic_pointer_cast<RecordType>(type); record && child->type() == NodeType::sel_field) { // type is a record and we are selecting a field
-                            type = record->fields().at(std::dynamic_pointer_cast<IdentNode>(child->children().front())->name());
+                            type = record->get_field_type_by_name(std::dynamic_pointer_cast<IdentNode>(child->children().front())->name());
                         }
                         else {
                             logger_.error(child->pos(), "Illegal subscript on non-subscriptable type");
@@ -44,14 +50,14 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
                     }
                     return type;
                 }
-                if (selected_ref) {
-                    std::shared_ptr<Type> type = scope_->lookup_by_name<Type>(selected_ref->referenced_type_name());
+                if (selected_param) {
+                    std::shared_ptr<Type> type = scope_->lookup_by_name<Type>(selected_param->type_name());
                     for (const auto& child : ident_node->selector_block()->children()) {
                         if (auto array = std::dynamic_pointer_cast<ArrayType>(child); array && child->type() == NodeType::sel_index) { // type is an array and we are selecting an index
                             type = array->base_type();
                         }
                         else if (auto record = std::dynamic_pointer_cast<RecordType>(child); record && child->type() == NodeType::sel_field) { // type is a record and we are selecting a field
-                            type = record->fields().at(std::dynamic_pointer_cast<IdentNode>(child->children().front())->name());
+                            type = record->get_field_type_by_name(std::dynamic_pointer_cast<IdentNode>(child->children().front())->name());
                         }
                         else {
                             logger_.error(child->pos(), "Illegal subscript on non-subscriptable type");
@@ -68,7 +74,7 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
             // vars have their type attached
             if (auto var = scope_->lookup_by_name<Variable>(ident_node->name())) return var->type();
             // so do refs
-            if (auto ref = scope_->lookup_by_name<PassedParam>(ident_node->name())) return scope_->lookup_by_name<Type>(ref->referenced_type_name());
+            if (auto ref = scope_->lookup_by_name<PassedParam>(ident_node->name())) return scope_->lookup_by_name<Type>(ref->type_name());
             // nothing else is admissible as an expression type
             logger_.error(node->pos(), "Couldn't determine identifier type");
             return nullptr;
@@ -99,7 +105,7 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
                         first = n;
                     }
                     for (const auto& child : n->children()) {
-                        if (!visited[child])
+                        if (!visited[child] && child->type() != NodeType::selector_block) // don't visit selector blocks
                             node_stack.push(child);
                     }
                 }
@@ -109,14 +115,14 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
                 return nullptr;
             }
             if (!second) return get_type(first); // only one non-op terminal
-            // more than one non-op terminal - both must be integer or things are bad
+            // more than one non-op terminal - both must be integer or both must be boolean or things are bad
             auto first_type = get_type(first);
             auto second_type = get_type(second);
             if (!first_type || !second_type) {
                 logger_.error(node->pos(), "Couldn't determine expression type");
                 return nullptr;
             }
-            if (first_type->name() != "INTEGER" || second_type->name() != "INTEGER") {
+            if (!types_compatible(first_type->name(), second_type->name())) {
                 stringstream ss;
                 ss << "Incompatible types in expression: \"" << first_type->name() << "\" and \"" << second_type->name() << "\"";
                 logger_.error(node->pos(), ss.str());
@@ -144,7 +150,7 @@ void TypeChecker::visit(const std::shared_ptr<Node> &node) {
             if (!left_type || !right_type) {
                 logger_.error(node->pos(), "Could not determine type");
             }
-            else if (left_type->name() != right_type->name()) {
+            else if (left_type->name() != right_type->name() && left_type->name() != "INTEGER" && right_type->name() != "INTEGER" && left_type->name() != "BOOLEAN" && right_type->name() != "BOOLEAN") { // types are different and non-compatible
                 logger_.error(node->pos(), "Cannot assign expression of type \"" + right_type->name() + "\" to symbol of type \"" + left_type->name() + "\"");
             }
             break;

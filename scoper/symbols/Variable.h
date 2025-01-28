@@ -15,6 +15,7 @@ private:
     std::shared_ptr<Type> type_;
 
 public:
+    llvm::Value *llvm_ptr = nullptr;
     Variable(std::string name, std::shared_ptr<Type> type, FilePos pos, const int size) : Symbol(std::move(name), std::move(pos), size), type_(std::move(type)) {
         kind_ = VARIABLE;
     }

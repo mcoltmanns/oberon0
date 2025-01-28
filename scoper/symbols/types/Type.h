@@ -11,8 +11,6 @@
 
 class Type : public Symbol {
 public:
-    llvm::Type *llvm_type = nullptr;
-
     Type(std::string name, FilePos pos, int size) : Symbol(name, pos, size) {
         kind_ = SymbolKind::TYPE;
     }

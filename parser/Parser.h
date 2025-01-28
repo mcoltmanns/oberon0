@@ -27,6 +27,8 @@ private:
 
     unique_ptr<LiteralNode> number();
 
+    unique_ptr<LiteralNode> boolean();
+
     std::unique_ptr<Node> module();
 
     std::unique_ptr<Node> declarations();

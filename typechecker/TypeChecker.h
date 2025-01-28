@@ -19,6 +19,8 @@ public:
     std::shared_ptr<Type> get_type(const std::shared_ptr<Node> &node);
 
     void visit(const std::shared_ptr<Node>& node) override;
+
+    static bool types_compatible(const std::string &a, const std::string &b);
 };
 
 
