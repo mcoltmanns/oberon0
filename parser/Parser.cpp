@@ -45,12 +45,33 @@ unique_ptr<LiteralNode> Parser::number() {
         logger_.error(scanner_.peek()->start(), ss.str());
         return nullptr;
     }
-    // again, very dangerous! but like in ident(), dynamic cast does not work
-    // we throw every number into a long because this is a modern compiler!
-    // with access to modern hardware on which we can store as many longs as we want!
     const auto token = scanner_.next();
     const Token* tokenPtr = token.get();
-    long val = static_cast<const LiteralToken<long>*>(tokenPtr)->value();
+    // cast depending on the token type
+    // this does not warn against overflow
+    long val;
+    switch(token->type()) {
+        case TokenType::byte_literal: {
+            val = dynamic_cast<const CharLiteralToken*>(tokenPtr)->value();
+            break;
+        }
+        case TokenType::short_literal: {
+            val = dynamic_cast<const ShortLiteralToken*>(tokenPtr)->value();
+            break;
+        }
+        case TokenType::int_literal: {
+            val = dynamic_cast<const IntLiteralToken*>(tokenPtr)->value();
+            break;
+        }
+        case TokenType::long_literal: {
+            val = dynamic_cast<const LongLiteralToken*>(tokenPtr)->value();
+            break;
+        }
+        default: {
+            logger_.error(scanner_.peek()->start(), "Could not cast token to IR");
+            return nullptr;
+        }
+    }
     return std::make_unique<LiteralNode>(val, false, start);
 }
 

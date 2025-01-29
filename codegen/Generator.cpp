@@ -131,6 +131,8 @@ void Generator::gen_statement(const std::shared_ptr<Node> &n, llvm::IRBuilder<> 
 llvm::Value* Generator::eval_expr(const std::shared_ptr<Node> &n, llvm::IRBuilder<> &builder, llvm::Module &ll_mod, Scope& scope) const {
     switch (n->type()) {
         case NodeType::literal: { // for literals, just return their value
+            //FIXME really weird bug in here - sometimes constants get loaded right, sometimes they get loaded wrong, who knows what's going on in there
+            // appears to be an error on my end and not llvm! node literal values are already wonky by the time they're read in
             auto lit = std::dynamic_pointer_cast<LiteralNode>(n);
             if (lit->is_bool()) return builder.getInt1(lit->value());
             return builder.getInt32(lit->value());
