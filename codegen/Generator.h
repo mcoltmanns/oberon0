@@ -34,6 +34,8 @@ public:
     std::pair<llvm::Value *, llvm::Type *> get_ident_ptr(const std::shared_ptr<IdentNode> &ident,
                                                          llvm::IRBuilder<> &builder, llvm::Module &ll_mod,
                                                          Scope &scope) const;
+
+    void gen_dec(const std::shared_ptr<Symbol> &sym, llvm::IRBuilder<> &builder, llvm::Module &ll_mod, bool global) const;
 };
 
 void align_global(llvm::GlobalVariable* global, llvm::DataLayout* layout, const llvm::Align* align);

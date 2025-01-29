@@ -51,7 +51,7 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
                     return type;
                 }
                 if (selected_param) {
-                    std::shared_ptr<Type> type = scope_->lookup_by_name<Type>(selected_param->type_name());
+                    std::shared_ptr<Type> type = selected_param->type();
                     for (const auto& child : ident_node->selector_block()->children()) {
                         if (auto array = std::dynamic_pointer_cast<ArrayType>(child); array && child->type() == NodeType::sel_index) { // type is an array and we are selecting an index
                             type = array->base_type();
@@ -74,7 +74,7 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
             // vars have their type attached
             if (auto var = scope_->lookup_by_name<Variable>(ident_node->name())) return var->type();
             // so do refs
-            if (auto ref = scope_->lookup_by_name<PassedParam>(ident_node->name())) return scope_->lookup_by_name<Type>(ref->type_name());
+            if (auto ref = scope_->lookup_by_name<PassedParam>(ident_node->name())) return ref->type();
             // nothing else is admissible as an expression type
             logger_.error(node->pos(), "Couldn't determine identifier type");
             return nullptr;

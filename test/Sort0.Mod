@@ -20,9 +20,11 @@ rec: TESTRECORD;
 
 bool: BOOLEAN;
 
-PROCEDURE NoDecs(a: BOOLEAN);
+PROCEDURE Test(a, b: INTEGER);
+VAR c: INTEGER;
 BEGIN
-END NoDecs;
+    a := a + b
+END Test;
 
 (* Initializes the array. *)
 PROCEDURE Init();
@@ -122,7 +124,6 @@ END QuickSort;
 (* Main program. *)
 BEGIN
     Swap(c, d);
-    NoDecs(bool);
     Init;
     QuickSort;
 END Sort0.

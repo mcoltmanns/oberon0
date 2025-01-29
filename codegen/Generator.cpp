@@ -43,83 +43,11 @@ llvm::Module * Generator::gen_module(const Module *module_symbol) const {
     BASIC_TYPE_BOOL->llvm_type = builder.getInt1Ty();
 
     auto layout = ll_module->getDataLayout();
-    auto align = layout.getStackAlignment();
+    //auto align = layout.getStackAlignment();
 
     // generate declarations (constants, variables, type and procedure signatures)
     for (const auto& symbol : module_symbol->scope_->table_) {
-        switch (symbol->kind_) {
-            case CONSTANT: {
-                auto constant = std::dynamic_pointer_cast<Constant>(symbol);
-                // constants always have immutable runtime addresses which makes them global variables
-                auto cons = new llvm::GlobalVariable(*ll_module, BASIC_TYPE_INT->llvm_type, true, llvm::GlobalValue::InternalLinkage, llvm::Constant::getIntegerValue(BASIC_TYPE_INT->llvm_type, constant->toAPInt(32)), constant->name());
-                align_global(cons, &layout, &align);
-                constant->llvm_type = cons->getValueType();
-                constant->llvm_ptr = cons;
-                break;
-            }
-            case VARIABLE: {
-                auto variable = std::dynamic_pointer_cast<Variable>(symbol);
-                auto type = variable->type()->llvm_type;
-                auto name = variable->name();
-                // variables declared at the module level have immutable runtime addresses, and get to be global variables
-                auto var = new llvm::GlobalVariable(*ll_module, type, false, llvm::GlobalValue::InternalLinkage, llvm::Constant::getNullValue(type), name);
-                align_global(var, &layout, &align);
-                variable->llvm_type = var->getValueType();
-                variable->llvm_ptr = var;
-                break;
-            }
-            case DERIVED_TYPE: {
-                auto derived = std::dynamic_pointer_cast<DerivedType>(symbol);
-                auto base = derived->base_type();
-                derived->llvm_type = base->llvm_type;
-                break;
-            }
-            case RECORD_TYPE: {
-                auto record = std::dynamic_pointer_cast<RecordType>(symbol);
-                std::vector<llvm::Type*> members;
-                for (const auto& field : record->fields()) {
-                    members.push_back(field.second->llvm_type);
-                }
-                auto type = llvm::StructType::get(ctx_, members); // we don't pack structs because we're lazy, and there's really no need for normal use
-                record->llvm_type = type;
-                break;
-            }
-            case ARRAY_TYPE: {
-                auto array = std::dynamic_pointer_cast<ArrayType>(symbol);
-                auto base = array->base_type()->llvm_type;
-                auto dim = array->length();
-                auto type = llvm::ArrayType::get(base, static_cast<unsigned long int>(dim));
-                array->llvm_type = type;
-                break;
-            }
-            case PROCEDURE: {
-                auto procedure = std::dynamic_pointer_cast<Procedure>(symbol);
-                auto name = procedure->name();
-                std::vector<llvm::Type*> args;
-                int param_index = 0;
-                for (const auto& param : procedure->params_) {
-                    if (const auto psym = std::dynamic_pointer_cast<PassedParam>(procedure->scope_->lookup_by_index(param_index++)); psym->is_reference()) {
-                        args.push_back(builder.getPtrTy()); // if the symbol is a reference, set a pointer in the function signature
-                    }
-                    else {
-                        const auto ptype = procedure->scope_->lookup_by_name<Type>(param.second);
-                        args.push_back(ptype->llvm_type); // otherwise set that parameter's type in the signature
-                    }
-                }
-                std::vector<llvm::Type*> locals;
-                //for (const auto& local : procedure->scope_.ta)
-                procedure->llvm_sig = llvm::FunctionType::get(builder.getVoidTy(), args, false); // oberon procedures have no return type and no varargs
-                procedure->llvm_callee = ll_module->getOrInsertFunction(name, procedure->llvm_sig);
-                /*for (const auto& statement : procedure->sseq_node_->children()) {
-                    gen_statement(statement, builder, *ll_module, *procedure->scope_);
-                }*/
-                break;
-            }
-            default: {
-                logger_.error(*module_symbol->pos(), "Unexpected symbol during generation");
-                return nullptr;
-            }
-        }
+        gen_dec(symbol, builder, *ll_module, true);
     }
 
     // define external printf
@@ -320,10 +248,14 @@ std::pair<llvm::Value *, llvm::Type *> Generator::get_ident_ptr(const std::share
     //SymbolKind ident_kind;
     // lookup the identifier in the scope
     if (auto param = scope.lookup_by_name<PassedParam>(ident->name()); param) {
+        // parameters are complicated
+        // llvm parameter vars are kept in the params vector of the parent function
+        //llvm::Value* param_ptr = nullptr;
+        //for (const auto& p : param->procedure()->llvm_params_)
         //ident_kind = param->kind_;
         ptr = param->llvm_ptr;
         ptr_type = param->llvm_type;
-        scope_type = scope.lookup_by_name<Type>(param->type_name());
+        scope_type = param->type();
     }
     else if (auto var = scope.lookup_by_name<Variable>(ident->name())) {
         //ident_kind = var->kind_;
@@ -357,4 +289,107 @@ std::pair<llvm::Value *, llvm::Type *> Generator::get_ident_ptr(const std::share
         }
     }
     return std::pair(ptr, ptr_type);
+}
+
+void Generator::gen_dec(const std::shared_ptr<Symbol> &sym, llvm::IRBuilder<> &builder, llvm::Module &ll_mod, const bool global=false) const {
+    auto layout = ll_mod.getDataLayout();
+    auto align = layout.getStackAlignment();
+
+    switch (sym->kind_) {
+        case CONSTANT: {
+            auto constant = std::dynamic_pointer_cast<Constant>(sym);
+            // constants always have immutable runtime addresses which makes them global variables
+            // just generate a new global variable
+            auto cons = new llvm::GlobalVariable(ll_mod, BASIC_TYPE_INT->llvm_type, true, llvm::GlobalValue::InternalLinkage, llvm::Constant::getIntegerValue(BASIC_TYPE_INT->llvm_type, constant->toAPInt(BASIC_TYPE_INT->llvm_type->getIntegerBitWidth())), constant->name());
+            align_global(cons, &layout, &align); // align it in memory
+            // store value type and pointer in the scope
+            constant->llvm_type = cons->getValueType();
+            constant->llvm_ptr = cons;
+            break;
+        }
+        case VARIABLE: {
+            auto variable = std::dynamic_pointer_cast<Variable>(sym);
+            auto type = variable->type()->llvm_type;
+            auto name = variable->name();
+            // if this declaration is global (at the module level) declare a mutable global variable
+            // otherwise allocate space on the stack
+            llvm::Value* var;
+            if (global) var = new llvm::GlobalVariable(ll_mod, type, false, llvm::GlobalValue::InternalLinkage, llvm::Constant::getNullValue(type), name);
+            else var = builder.CreateAlloca(type, nullptr, name);
+            variable->llvm_type = var->getType();
+            variable->llvm_ptr = var;
+            break;
+        }
+        case PASSED_PARAM: {
+            // do not generate declarations for parameters - these are handled as part of function construction
+            break;
+        }
+        case DERIVED_TYPE: {
+            auto derived = std::dynamic_pointer_cast<DerivedType>(sym);
+            auto base = derived->base_type();
+            derived->llvm_type = base->llvm_type;
+            break;
+        }
+        case RECORD_TYPE: {
+            auto record = std::dynamic_pointer_cast<RecordType>(sym);
+            std::vector<llvm::Type*> fields;
+            for (const auto& field : record->fields()) {
+                fields.push_back(field.second->llvm_type);
+            }
+            auto type = llvm::StructType::get(ctx_, fields); // we don't pack structs because we're lazy and there's really no need
+            record->llvm_type = type;
+            break;
+        }
+        case ARRAY_TYPE: {
+            auto array = std::dynamic_pointer_cast<ArrayType>(sym);
+            auto base = array->base_type()->llvm_type;
+            auto dim = array->length();
+            auto type = llvm::ArrayType::get(base, static_cast<size_t>(dim));
+            array->llvm_type = type;
+            break;
+        }
+        case PROCEDURE: {
+            auto procedure = std::dynamic_pointer_cast<Procedure>(sym);
+            auto name = procedure->name();
+            std::vector<llvm::Type*> args;
+            int param_idx = 0;
+            for (const auto& param: procedure->params_) {
+                if (const auto psym = std::dynamic_pointer_cast<PassedParam>(procedure->scope_->lookup_by_index(param_idx)); psym->is_reference()) {
+                    args.push_back(builder.getPtrTy()); // if the symbol is a reference, set a pointer in the function signature
+                }
+                else {
+                    const auto ptype = procedure->scope_->lookup_by_name<Type>(param.second);
+                    args.push_back(ptype->llvm_type); // otherwise set that parameter's type in the signature
+                }
+                param_idx++;
+            }
+            // generate procedure signature and basic block
+            procedure->llvm_sig = llvm::FunctionType::get(builder.getVoidTy(), args, false); // oberon procs have no return type and no varargs
+            procedure->llvm_function = llvm::cast<llvm::Function>(ll_mod.getOrInsertFunction(name, procedure->llvm_sig).getCallee());
+            auto arg_it = procedure->llvm_function->arg_begin();
+            for (unsigned long int i = 0; i < procedure->params_.size(); i++) {
+                auto scope_param = std::dynamic_pointer_cast<PassedParam>(procedure->scope_->lookup_by_index(i));
+                scope_param->llvm_type = args.at(i);
+                scope_param->llvm_ptr = arg_it++;
+            }
+            auto proc_bb = llvm::BasicBlock::Create(builder.getContext(), procedure->name(), procedure->llvm_function);
+            auto proc_exit = llvm::BasicBlock::Create(builder.getContext(), procedure->name() + "_exit", llvm::cast<llvm::Function>(procedure->llvm_function));
+            builder.SetInsertPoint(proc_bb);
+            // generate procedure locals
+            std::vector<llvm::Type*> locals;
+            for (const auto& local : procedure->scope_->table_) {
+                gen_dec(local, builder, ll_mod, false);
+            }
+            // generate procedure statements
+            for (const auto& statement : procedure->sseq_node_->children()) {
+                gen_statement(statement, builder, ll_mod, *procedure->scope_);
+            }
+            builder.SetInsertPoint(proc_exit);
+            builder.CreateRetVoid();
+            break;
+        }
+        default: {
+            logger_.error(*sym->pos(), "Unexpected symbol during generation");
+        }
+    }
 }

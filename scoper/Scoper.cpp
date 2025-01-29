@@ -249,9 +249,9 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                                 // add the parameters as variables declared in the function to the procedure scope
                                 for (const auto& param_ident_node : param_list->children().front()->children()) {
                                     auto ident = dynamic_cast<IdentNode*>(param_ident_node.get());
-                                    auto sym = std::make_shared<PassedParam>(ident->name(), type_name, false, ident->pos()); // variable named foo of type bar, declared at pos, copy vars have the same size as their base types
+                                    auto sym = std::make_shared<PassedParam>(ident->name(), proc_type, false, ident->pos(), &proc_sym); // variable named foo of type bar, declared at pos, copy vars have the same size as their base types
                                     proc_scope->add(sym);
-                                    proc_sym.params_.push_back(std::pair(ident->name(), type_name));
+                                    proc_sym.params_.emplace_back(ident->name(), type_name);
                                 }
                                 break;
                             }
@@ -260,9 +260,9 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                                 // add the parameters as references to a type declared in the function to the procedure scope
                                 for (const auto& param_ident_node : param_list->children().front()->children()) {
                                     auto ident = dynamic_cast<IdentNode *>(param_ident_node.get());
-                                    auto sym = std::make_shared<PassedParam>(ident->name(), type_name, true, ident->pos()); // referenced named foo to a value of type bar, declared at pos
+                                    auto sym = std::make_shared<PassedParam>(ident->name(), proc_type, true, ident->pos(), &proc_sym); // referenced named foo to a value of type bar, declared at pos
                                     proc_scope->add(sym);
-                                    proc_sym.params_.push_back(std::pair(ident->name(), type_name));
+                                    proc_sym.params_.emplace_back(ident->name(), type_name);
                                 }
                                 break;
                             }
