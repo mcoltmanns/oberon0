@@ -25,8 +25,13 @@ CONST d = 5;
 VAR c: INTEGER;
 BEGIN
     a := d + 2;
-    c := a + 2;
-    b := c * c;
+    IF a = d THEN
+        a := d + 2
+    ELSIF a = b THEN
+        b := a + 2
+    ELSE
+        a := 0
+    END
 END Test;
 
 (* Initializes the array. *)

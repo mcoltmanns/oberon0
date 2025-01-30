@@ -27,7 +27,7 @@ public:
 
     llvm::GlobalVariable *declare_const(std::shared_ptr<Constant> &constant);
 
-    llvm::GlobalVariable *declare_gl_var(std::shared_ptr<Variable> &variable);
+    llvm::GlobalVariable *declare_global_variable(std::shared_ptr<Variable> &variable);
 
     llvm::Type *declare_derived_type(std::shared_ptr<DerivedType> &derived_type);
 
@@ -51,6 +51,8 @@ public:
 
     llvm::Value *evaluate_expression(const std::shared_ptr<Node> &expression_node, llvm::IRBuilder<> &builder,
                                      Scope &scope);
+
+    llvm::Value *generate_statement(const std::shared_ptr<Node> &statement, llvm::IRBuilder<> &builder, Scope &scope, llvm::Function *function);
 
     llvm::Function *create_func(std::shared_ptr<Procedure> &procedure, llvm::Module *module, llvm::IRBuilder<> &builder);
 };

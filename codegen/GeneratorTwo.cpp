@@ -62,7 +62,7 @@ llvm::Module* GeneratorTwo::generate_module(const Module *module_symbol, llvm::L
             array_type->llvm_type = llvm::ArrayType::get(array_type->base_type()->llvm_type, static_cast<uint64_t>(array_type->length()));
         }
         else if (auto variable = dynamic_pointer_cast<Variable>(symbol); variable) {
-            module->insertGlobalVariable(declare_gl_var(variable));
+            module->insertGlobalVariable(declare_global_variable(variable));
         }
         else if (auto procedure = dynamic_pointer_cast<Procedure>(symbol); procedure) {
             create_func(procedure, module, builder);
@@ -78,7 +78,7 @@ llvm::GlobalVariable* GeneratorTwo::declare_const(std::shared_ptr<Constant> &con
     return llvm_const;
 }
 
-llvm::GlobalVariable* GeneratorTwo::declare_gl_var(std::shared_ptr<Variable> &variable) {
+llvm::GlobalVariable* GeneratorTwo::declare_global_variable(std::shared_ptr<Variable> &variable) {
     auto* llvm_var = new llvm::GlobalVariable(variable->type()->llvm_type, false, llvm::GlobalVariable::InternalLinkage, llvm::Constant::getNullValue(variable->type()->llvm_type), variable->name());
     variable->llvm_ptr = llvm_var;
     return llvm_var;
@@ -118,9 +118,9 @@ llvm::LoadInst* GeneratorTwo::load_local_variable(std::shared_ptr<Variable> &var
 }
 
 // parameters are a little tougher
+// but not too awful
 llvm::Value* GeneratorTwo::load_local_variable(std::shared_ptr<PassedParam> &passed_param, llvm::IRBuilder<> &builder) {
     auto func = builder.GetInsertBlock()->getParent(); // what function are we working in?
-    // find out what the index of the parameter is
     auto param = func->arg_begin() + passed_param->index(); // find the parameter
     if (passed_param->is_reference()) { // if the parameter is a reference, load it
         llvm::LoadInst* param_load = builder.CreateLoad(passed_param->type()->llvm_type, param, passed_param->name());
@@ -249,6 +249,67 @@ llvm::Value* GeneratorTwo::evaluate_expression(const std::shared_ptr<Node> &expr
     }
 }
 
+llvm::Value* GeneratorTwo::generate_statement(const std::shared_ptr<Node> &statement, llvm::IRBuilder<> &builder, Scope &scope, llvm::Function* function) {
+    switch (statement->type()) {
+        case NodeType::assignment: {
+            auto ident = std::dynamic_pointer_cast<IdentNode>(statement->children().front());
+            auto expr = statement->children().back();
+
+            auto expr_res = evaluate_expression(expr, builder, scope);
+
+            if (auto variable = scope.lookup_by_name<Variable>(ident->name()); variable) {
+                return store_val_to_variable(expr_res, variable, builder);
+            }
+            if (auto param = scope.lookup_by_name<PassedParam>(ident->name()); param) {
+                return store_val_to_variable(expr_res, param, builder);
+            }
+            return nullptr;
+        }
+        case NodeType::proc_call: {
+            return nullptr;
+        }
+        case NodeType::if_statement: {
+            auto if_cond = evaluate_expression(statement->children().front(), builder, scope); // evaluate the condition
+            auto if_block = llvm::BasicBlock::Create(builder.getContext(), "if", function); // create the block for the condition
+            llvm::BasicBlock* else_block = nullptr;
+            if (statement->children().size() > 2) {
+                else_block = llvm::BasicBlock::Create(builder.getContext(), "else", function); // create the block for the noncondition
+            }
+            auto after_block = llvm::BasicBlock::Create(builder.getContext(), "after", function); // create the block to jump to afterwards
+
+            // if there is an else, jump there if the condition fails
+            if (else_block) {
+                builder.CreateCondBr(if_cond, if_block, else_block);
+            }
+            else { // otherwise, jump to afterwards
+                builder.CreateCondBr(if_cond, if_block, after_block);
+            }
+
+            // remeber:
+            // if
+            //  expression      (0)
+            //  statement seq   (1)
+            //  if              (2)
+            //      expression
+            //      statement seq
+
+            // generate statements in the if block
+            builder.SetInsertPoint(if_block);
+            for (const auto &child : statement->children().at(1)->children()) {
+                generate_statement(child, builder, scope, function);
+            }
+            builder.CreateBr(after_block);
+
+            // leave the builder at the end
+            builder.SetInsertPoint(after_block);
+            return if_block;
+        }
+        default: {
+            return nullptr;
+        }
+    }
+}
+
 llvm::Function* GeneratorTwo::create_func(std::shared_ptr<Procedure> &procedure, llvm::Module* module, llvm::IRBuilder<> &builder) {
     // construct function signature
     std::vector<llvm::Type*> arg_types;
@@ -292,29 +353,7 @@ llvm::Function* GeneratorTwo::create_func(std::shared_ptr<Procedure> &procedure,
 
     // process function statements
     for (const auto &statement : procedure->sseq_node_->children()) {
-        switch (statement->type()) {
-            case NodeType::assignment: {
-                auto ident = std::dynamic_pointer_cast<IdentNode>(statement->children().front());
-                auto expr = statement->children().back();
-
-                auto expr_res = evaluate_expression(expr, builder, *procedure->scope_);
-
-                if (auto variable = procedure->scope_->lookup_by_name<Variable>(ident->name()); variable) {
-                    store_val_to_variable(expr_res, variable, builder);
-                }
-                else if (auto param = procedure->scope_->lookup_by_name<PassedParam>(ident->name()); param) {
-                    store_val_to_variable(expr_res, param, builder);
-                }
-
-                break;
-            }
-            case NodeType::proc_call: {
-                break;
-            }
-            default: {
-
-            }
-        }
+        generate_statement(statement, builder, *procedure->scope_, func);
     }
 
     return func;
