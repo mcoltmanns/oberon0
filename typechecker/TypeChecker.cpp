@@ -200,7 +200,7 @@ void TypeChecker::visit(const std::shared_ptr<Node> &node) {
             // parse the remaining stuff
             for (const auto& child : node->children() | std::views::drop(2)) {
                 switch (child->type()) {
-                    case NodeType::if_alt: {
+                    case NodeType::if_statement: {
                         cond = child->children().at(0); // check alternate condition type
                         if (get_type(cond)->name() != "INTEGER" && get_type(cond)->name() != "BOOLEAN") {
                             logger_.error(cond->pos(), "Invalid expression type in conditional");

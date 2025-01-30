@@ -350,7 +350,7 @@ std::unique_ptr<Node> Parser::ifStatement() {
     accept(TokenType::kw_then);
     result->append_child(statementSequence());
     while(expect(TokenType::kw_elsif)) {
-        auto elsif = std::make_unique<Node>(NodeType::if_alt, accept(TokenType::kw_elsif)->start());
+        auto elsif = std::make_unique<Node>(NodeType::if_statement, accept(TokenType::kw_elsif)->start());
         elsif->append_child(expression());
         accept(TokenType::kw_then);
         elsif->append_child(statementSequence());
