@@ -3,7 +3,7 @@ MODULE Sort0;
 
 (* Length of the array to be sorted. *)
 CONST Dim = 10;
-AnotherConstant = -6 * 3;
+AnotherConstant = -2 + 3;
 
 (* Array type *)
 TYPE TESTRECORD = RECORD foo, bar : INTEGER END;
@@ -20,10 +20,13 @@ rec: TESTRECORD;
 
 bool: BOOLEAN;
 
-PROCEDURE Test(a, b: INTEGER);
+PROCEDURE Test(VAR a, b: INTEGER);
+CONST d = 5;
 VAR c: INTEGER;
 BEGIN
-    a := a + b
+    a := d + 2;
+    c := a + 2;
+    b := c * c;
 END Test;
 
 (* Initializes the array. *)
@@ -126,4 +129,11 @@ BEGIN
     Swap(c, d);
     Init;
     QuickSort;
+    IF 1 = 2 THEN
+        Swap(c, d)
+    ELSIF 2 = 3 THEN
+        Swap(c, d)
+    ELSE
+        Swap(c, d)
+    END
 END Sort0.

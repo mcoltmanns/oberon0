@@ -8,6 +8,7 @@
 #include <string>
 
 #include "codegen/Generator.h"
+#include "codegen/GeneratorTwo.h"
 #include "codegen/LLVMMachine.h"
 #include "parser/Parser.h"
 #include "scanner/Scanner.h"
@@ -46,9 +47,9 @@ int main(const int argc, const char *argv[]) {
             outer_scope->print(cout);
             auto module = outer_scope->lookup_by_name<Module>("Sort0");
             auto tm = LLVMMachine();
-            llvm::LLVMContext ctx;
-            auto gen = Generator(*tm.TM, ctx, logger);
-            auto code = gen.gen_module(module.get());
+            auto gen = GeneratorTwo();
+            auto ctx = llvm::LLVMContext();
+            auto code = gen.generate_module(module.get(), ctx, tm.TM->createDataLayout(), tm.TM->getTargetTriple());
             if (logger.getErrorCount() != 0) goto print_status;
             tm.emit(code, module->name(), OutputFileType::LLVMIRFile);
         }

@@ -29,6 +29,7 @@ public:
     std::vector<std::shared_ptr<Node>> uses_; // where in the program is this used?
     SymbolKind kind_ = SymbolKind::SYMBOL; // what kind of symbol is this?
     llvm::Type *llvm_type = nullptr; // what kind of thing is this according to llvm?
+    llvm::Value *llvm_ptr = nullptr;
 
     Symbol(std::string name, FilePos pos, const int size) : name_(std::move(name)), declared_at_(std::move(pos)), size_(size), offset_(0) {}
 

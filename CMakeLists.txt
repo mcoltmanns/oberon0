@@ -92,7 +92,9 @@ set(TYPECHECKER_SOURCES
 
 set(CODEGEN_SOURCES
         codegen/Generator.cpp
-        codegen/Generator.h)
+        codegen/Generator.h
+        codegen/GeneratorTwo.cpp
+        codegen/GeneratorTwo.h)
 
 set(ALL_SOURCES global.h ${UTIL_SOURCES} ${SCANNER_SOURCES} ${PARSER_SOURCES} ${SCOPER_SOURCES} ${TYPECHECKER_SOURCES} ${CODEGEN_SOURCES}
         codegen/LLVMMachine.cpp

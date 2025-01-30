@@ -19,6 +19,7 @@
 // evaluate a constant expression
 long int Scoper::evaluate_const_expression(const std::shared_ptr<Node>& node) {
     if (node == nullptr) return 0;
+    // TODO this needs work. use the same algorithm the generator uses
     switch (node->type()) {
         // literals are easy
         case NodeType::literal: {
@@ -42,7 +43,7 @@ long int Scoper::evaluate_const_expression(const std::shared_ptr<Node>& node) {
             // special case for leading sign
             if (node->children().at(0)->type() == NodeType::op) {
                 auto lead = std::dynamic_pointer_cast<OperatorNode>(node->children().at(0));
-                if (lead->operation() == MINUS) res = -evaluate_const_expression(node->children().at(1));
+                if (lead->operation() == MINUS_UNARY) res = -evaluate_const_expression(node->children().at(1));
                 else if (lead->operation() == NOT) res = evaluate_const_expression(node->children().at(1)) == 0 ? 1 : 0;
                 else res = evaluate_const_expression(node->children().at(1));
                 had_leading = true;
@@ -235,6 +236,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
             if (fp_node) { // process the parameters, if they exist
                 // remember that parameters are also technically in the scope of the procedure, not the outer (current) scope
                 // so we lookup and add to proc_scope, not scope_
+                int param_index = 0;
                 for (const auto& param_list : fp_node->children()) {
                     // within a param list: first node is a list of identifiers, second node is a type_raw containing an identifier name which must be a previously declared type
                     // find out the type name for this set of params
@@ -249,7 +251,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                                 // add the parameters as variables declared in the function to the procedure scope
                                 for (const auto& param_ident_node : param_list->children().front()->children()) {
                                     auto ident = dynamic_cast<IdentNode*>(param_ident_node.get());
-                                    auto sym = std::make_shared<PassedParam>(ident->name(), proc_type, false, ident->pos(), &proc_sym); // variable named foo of type bar, declared at pos, copy vars have the same size as their base types
+                                    auto sym = std::make_shared<PassedParam>(ident->name(), param_index++, proc_type, false, ident->pos(), &proc_sym); // variable named foo of type bar, declared at pos, copy vars have the same size as their base types
                                     proc_scope->add(sym);
                                     proc_sym.params_.emplace_back(ident->name(), type_name);
                                 }
@@ -260,7 +262,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                                 // add the parameters as references to a type declared in the function to the procedure scope
                                 for (const auto& param_ident_node : param_list->children().front()->children()) {
                                     auto ident = dynamic_cast<IdentNode *>(param_ident_node.get());
-                                    auto sym = std::make_shared<PassedParam>(ident->name(), proc_type, true, ident->pos(), &proc_sym); // referenced named foo to a value of type bar, declared at pos
+                                    auto sym = std::make_shared<PassedParam>(ident->name(), param_index++, proc_type, true, ident->pos(), &proc_sym); // referenced named foo to a value of type bar, declared at pos
                                     proc_scope->add(sym);
                                     proc_sym.params_.emplace_back(ident->name(), type_name);
                                 }

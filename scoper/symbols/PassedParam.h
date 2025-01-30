@@ -14,19 +14,20 @@
 
 class PassedParam final : public Symbol {
 private:
+    int index_;
     std::shared_ptr<Type> type_;
     bool is_reference_;
     Procedure* procedure_;
 
 public:
-    llvm::Value *llvm_ptr = nullptr;
-    PassedParam(std::string name, std::shared_ptr<Type> type, const bool is_reference, FilePos pos, Procedure* procedure) : Symbol(std::move(name), std::move(pos), REF_SIZE), type_(std::move(type)), is_reference_(is_reference), procedure_(procedure) {
+    PassedParam(std::string name, int index,std::shared_ptr<Type> type, const bool is_reference, FilePos pos, Procedure* procedure) : Symbol(std::move(name), std::move(pos), REF_SIZE), index_(index), type_(std::move(type)), is_reference_(is_reference), procedure_(procedure) {
         kind_ = SymbolKind::PASSED_PARAM;
     }
 
     std::shared_ptr<Type> type() { return type_; }
     [[nodiscard]] Procedure* procedure() const { return procedure_; }
     [[nodiscard]] bool is_reference() const { return is_reference_; }
+    [[nodiscard]] int index() const { return index_; }
 
     void print(std::ostream &s, int tabs) override;
 };

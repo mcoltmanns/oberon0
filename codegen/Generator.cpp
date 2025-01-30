@@ -79,7 +79,7 @@ llvm::Module * Generator::gen_module(const Module *module_symbol) const {
     return ll_module;
 }
 
-// generate code for a statement (in the module context)
+// generate code for a statement
 void Generator::gen_statement(const std::shared_ptr<Node> &n, llvm::IRBuilder<> &builder, llvm::Module& ll_mod, Scope& scope) const {
     switch (n->type()) {
         case NodeType::assignment: {
@@ -113,6 +113,36 @@ void Generator::gen_statement(const std::shared_ptr<Node> &n, llvm::IRBuilder<> 
             break;
         }
         case NodeType::if_statement: {
+            // if statements are:
+            // expression statementseq
+            // any number of if_alt which are expression statementseq
+            // one or zero if_default which is statementseq
+            // one BB per statement seq
+            std::vector<llvm::BasicBlock*> cond_blocks;
+            std::vector<llvm::Value*> conds;
+            //llvm::BasicBlock* end_block = nullptr;
+
+            //conds.push_back(eval_expr(n->children().at(0), builder, ll_mod, scope));
+            auto cb = llvm::BasicBlock::Create(builder.getContext(), "if");
+            cond_blocks.push_back(cb);
+
+            for (unsigned long int i = 2; i < n->children().size(); i++) {
+                auto node = n->children().at(i);
+                if (node->type() == NodeType::if_alt) {
+                    //conds.push_back(eval_expr(node->children().at(0), builder, ll_mod, scope));
+                    cb = llvm::BasicBlock::Create(builder.getContext(), "elif");
+                    cond_blocks.push_back(cb);
+                }
+                else {
+                    //end_block = llvm::BasicBlock::Create(builder.getContext(), "else");
+                }
+            }
+
+            //end_block->getContext();
+
+            break;
+        }
+        case NodeType::if_alt: {
             break;
         }
         case NodeType::while_statement: {
@@ -127,12 +157,10 @@ void Generator::gen_statement(const std::shared_ptr<Node> &n, llvm::IRBuilder<> 
     }
 }
 
-// evaluate and store a given expression node
+// evaluate a given expression node, store its result in a SYMBOL
 llvm::Value* Generator::eval_expr(const std::shared_ptr<Node> &n, llvm::IRBuilder<> &builder, llvm::Module &ll_mod, Scope& scope) const {
     switch (n->type()) {
         case NodeType::literal: { // for literals, just return their value
-            //FIXME really weird bug in here - sometimes constants get loaded right, sometimes they get loaded wrong, who knows what's going on in there
-            // appears to be an error on my end and not llvm! node literal values are already wonky by the time they're read in
             auto lit = std::dynamic_pointer_cast<LiteralNode>(n);
             if (lit->is_bool()) return builder.getInt1(lit->value());
             return builder.getInt32(lit->value());
@@ -147,10 +175,11 @@ llvm::Value* Generator::eval_expr(const std::shared_ptr<Node> &n, llvm::IRBuilde
             // for anything else
             // iterate over the children and write instructions accordingly
             // following algorithm inspired by shunting yard, but adapted to the structure of my ast
+            //TODO: check unary operators - they bug out sometimes
             std::stack<OperatorNode*> operators;
             std::stack<llvm::Value*> values;
             for (const auto& child : n->children()) {
-                if (child) { //FIXME this null check shouldn't be needed. sometimes the parser generates empty expressions and i can't figure out why. but they don't seem to affect correctness so i'm not gonna worry too hard
+                if (child) { //this null check shouldn't be needed. sometimes the parser generates empty expressions and i can't figure out why. but they don't seem to affect correctness so i'm not gonna worry too hard
                     if (child->type() == NodeType::op) {
                         operators.push(dynamic_cast<OperatorNode*>(child.get()));
                     }
@@ -240,7 +269,8 @@ llvm::Value * Generator::apply_op(llvm::Value *lhs, OperatorNode *op, llvm::Valu
     }
 }
 
-// get a given ident node's pointer and pointer type
+// evaluate a given ident node
+// return
 std::pair<llvm::Value *, llvm::Type *> Generator::get_ident_ptr(const std::shared_ptr<IdentNode> &ident,
                                                                 llvm::IRBuilder<> &builder, llvm::Module &ll_mod,
                                                                 Scope &scope) const {
@@ -250,8 +280,8 @@ std::pair<llvm::Value *, llvm::Type *> Generator::get_ident_ptr(const std::share
     //SymbolKind ident_kind;
     // lookup the identifier in the scope
     if (auto param = scope.lookup_by_name<PassedParam>(ident->name()); param) {
-        // parameters are complicated
-        // llvm parameter vars are kept in the params vector of the parent function
+        //TODO this is still wrong
+        // parameter values probably have to be looked up in the parameter's procedure
         //llvm::Value* param_ptr = nullptr;
         //for (const auto& p : param->procedure()->llvm_params_)
         //ident_kind = param->kind_;
