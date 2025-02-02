@@ -392,7 +392,8 @@ llvm::BasicBlock *Generator::generate_statement(const std::shared_ptr<Node> &sta
 
             return builder.CreateCall(proc->llvm_function, args)->getParent();
         }
-        case NodeType::if_statement: {
+        case NodeType::if_statement:
+        case NodeType::if_alt: {
             /*
              * if statements are a little funny in the AST
              * if
@@ -404,54 +405,79 @@ llvm::BasicBlock *Generator::generate_statement(const std::shared_ptr<Node> &sta
              * we can always create the if, and we can always create the else
              * then generate the in betweens iteratively, and create jumps as so:
              * if condition jump to block you're in, else jump to next block
+             *
+             * whole approach is 2-pass: first, generate the basic blocks and the statements in the then blocks
+             * then, once all blocks are generated and we know our jumps, take another pass and generate comparisons and jumps
              */
-            /*auto start = builder.GetInsertBlock();
-            auto if_block = llvm::BasicBlock::Create(builder.getContext(), "if", function);
-            auto else_block = statement->children().back()->type() == NodeType::if_default ? llvm::BasicBlock::Create(builder.getContext(), "else", function) : nullptr;
-            auto end_block = llvm::BasicBlock::Create(builder.getContext(), "fi", function); // if there's a default we don't need an end block
 
-            builder.SetInsertPoint(start); // insert conditional evaluation
-            auto cond = evaluate_expression(statement->children().front(), builder, scope);
-            builder.CreateCondBr(cond, if_block, else_block ? else_block : end_block); // jump according to if there's a default block or not
+            auto outer = builder.GetInsertBlock(); // so we know where to place the condition
+            auto then_block = llvm::BasicBlock::Create(builder.getContext(), "then", function); // if the initial condition is successful
+            auto else_block = statement->children().back()->type() == NodeType::if_default ? llvm::BasicBlock::Create(builder.getContext(), "else", function) : nullptr; // only make a default block if we need one
+            auto end_block = llvm::BasicBlock::Create(builder.getContext(), "fi", function); // we always need an end block, because control has to jump here if any of the conditions execute successfully
 
-            for (const auto &st : statement->children().at(1)->children()) {
-                builder.SetInsertPoint(if_block);
-                generate_statement(st, builder, scope, function);
+            // generate basic blocks and write block bodies
+            std::vector<std::tuple<llvm::BasicBlock*, std::shared_ptr<Node>, llvm::BasicBlock*>> branches; // [ condition block, condition node, body block ]
+
+            // first block happens outside of the pass because indexes are different
+            branches.emplace_back(outer, statement->children().front(), then_block);
+            auto tb = std::get<2>(branches.back()); // then-block for this condition
+            // generate statements for this then-block
+            for (const auto &stmt : statement->children().at(1)->children()) {
+                builder.SetInsertPoint(tb);
+                generate_statement(stmt, builder, scope, function);
             }
-            builder.SetInsertPoint(if_block);
+            // if this block manages to execute, return flow to the end of the if statement
+            builder.SetInsertPoint(tb);
             builder.CreateBr(end_block);
 
-            for (auto branch = statement->children().begin() + 2; branch != statement->children().end(); ++branch) {
-                builder.SetInsertPoint(else_block);
-                generate_statement(*branch, builder, scope, function);
+            // main first pass - create the rest of the blocks and their statements. similar concept as above
+            for (uint64_t i = 2; i < statement->children().size() - 1; i++) {
+                builder.SetInsertPoint(outer);
+                auto cond = statement->children().at(i)->children().front();
+                auto ib = llvm::BasicBlock::Create(builder.getContext(), "if", function);
+                auto tb = llvm::BasicBlock::Create(builder.getContext(), "then", function);
+                branches.emplace_back(ib, cond, tb);
+
+                for (const auto &stmt : statement->children().at(i)->children().back()->children()) {
+                    builder.SetInsertPoint(tb);
+                    generate_statement(stmt, builder, scope, function);
+                }
+
+                builder.SetInsertPoint(tb);
+                builder.CreateBr(end_block);
             }
 
-            builder.SetInsertPoint(end_block);*/
-
-            break;
-        }
-        case NodeType::if_alt: {
-            /*auto start = builder.GetInsertBlock();
-            auto if_block = llvm::BasicBlock::Create(builder.getContext(), "if", function);
-            auto default_block = llvm::BasicBlock::Create(builder.getContext(), "else", function);
-
-            builder.SetInsertPoint(start);
-            auto cond = evaluate_expression(statement->children().front(), builder, scope);
-            builder.CreateCondBr(cond, if_block, default_block);
-
-            for (const auto &st : statement->children().at(1)->children()) {
-                builder.SetInsertPoint(if_block);
-                generate_statement(st, builder, scope, function);
+            // generate statements for default block
+            if (else_block) {
+                branches.emplace_back(else_block, nullptr, nullptr);
+                for (const auto &stmt : statement->children().back()    ->children()) {
+                    builder.SetInsertPoint(else_block);
+                    generate_statement(stmt, builder, scope, function);
+                }
             }
 
-            builder.SetInsertPoint(default_block);*/
-            break;
+            branches.emplace_back(end_block, nullptr, nullptr);
+
+            // go back over and generate branches
+            for (uint64_t i = 0; i < branches.size() - (else_block ? 2 : 1); i++) {
+                auto [ib, cn, tb] = branches[i]; // [ basic block to write the branch to, condition to check, block to execute on success ]
+                auto eb = std::get<0>(branches[i + 1]); // block to execute on false condition
+                // write branch to the branch block
+                builder.SetInsertPoint(ib);
+                auto cond = evaluate_expression(cn, builder, scope);
+                builder.CreateCondBr(cond, tb, eb);
+            }
+
+            // leave things at the end block and return it
+            builder.SetInsertPoint(end_block);
+            return end_block;
         }
         case NodeType::if_default: {
-            /*for (const auto &st : statement->children().front()->children()) {
+            // default if cases are just wrappers for statement sequences
+            for (const auto &st : statement->children().front()->children()) {
                 generate_statement(st, builder, scope, function);
-            }*/
-            break;
+            }
+            return builder.GetInsertBlock();
         }
         case NodeType::while_statement: {
             // whiles are a condition followed by a statement sequence

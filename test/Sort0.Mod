@@ -25,11 +25,16 @@ CONST d = 5;
 VAR c: INTEGER;
 f: INTARRAY;
 BEGIN
-    WHILE TRUE DO
-        a := d;
-        WHILE FALSE DO
-        END
-    END
+    IF 0 = 1 THEN
+        a := 1
+    ELSIF 2 = 2 THEN
+        b := 2
+    ELSIF 3 = 4 THEN
+        b := 5
+    ELSE
+        a := 3
+    END;
+    a := 4
 END Test;
 
 (* Initializes the array. *)
