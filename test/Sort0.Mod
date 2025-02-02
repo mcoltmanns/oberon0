@@ -20,18 +20,12 @@ rec: TESTRECORD;
 
 bool: BOOLEAN;
 
-PROCEDURE Test(VAR a, b: INTEGER);
+PROCEDURE Test(VAR a, b: INTEGER; VAR e: INTARRAY);
 CONST d = 5;
 VAR c: INTEGER;
+f: INTARRAY;
 BEGIN
-    a := d + 2;
-    IF a = d THEN
-        a := d + 2
-    ELSIF a = b THEN
-        b := a + 2
-    ELSE
-        a := 0
-    END
+    bool := e[a - 1] < a
 END Test;
 
 (* Initializes the array. *)
@@ -59,7 +53,7 @@ END Swap;
 PROCEDURE InsertionSort;
 VAR i, j: INTEGER;
 BEGIN
-    i := 1;
+    i := 0;
     WHILE i < Dim DO
         j := i;
         WHILE (j > 0) & (a[j - 1] > a[j]) DO
@@ -134,11 +128,4 @@ BEGIN
     Swap(c, d);
     Init;
     QuickSort;
-    IF 1 = 2 THEN
-        Swap(c, d)
-    ELSIF 2 = 3 THEN
-        Swap(c, d)
-    ELSE
-        Swap(c, d)
-    END
 END Sort0.

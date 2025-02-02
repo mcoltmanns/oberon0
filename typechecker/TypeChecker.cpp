@@ -53,10 +53,10 @@ std::shared_ptr<Type> TypeChecker::get_type(const std::shared_ptr<Node> &node) {
                 if (selected_param) {
                     std::shared_ptr<Type> type = selected_param->type();
                     for (const auto& child : ident_node->selector_block()->children()) {
-                        if (auto array = std::dynamic_pointer_cast<ArrayType>(child); array && child->type() == NodeType::sel_index) { // type is an array and we are selecting an index
+                        if (auto array = std::dynamic_pointer_cast<ArrayType>(type); array && child->type() == NodeType::sel_index) { // type is an array and we are selecting an index
                             type = array->base_type();
                         }
-                        else if (auto record = std::dynamic_pointer_cast<RecordType>(child); record && child->type() == NodeType::sel_field) { // type is a record and we are selecting a field
+                        else if (auto record = std::dynamic_pointer_cast<RecordType>(type); record && child->type() == NodeType::sel_field) { // type is a record and we are selecting a field
                             type = record->get_field_type_by_name(std::dynamic_pointer_cast<IdentNode>(child->children().front())->name());
                         }
                         else {
@@ -200,6 +200,7 @@ void TypeChecker::visit(const std::shared_ptr<Node> &node) {
             // parse the remaining stuff
             for (const auto& child : node->children() | std::views::drop(2)) {
                 switch (child->type()) {
+                    case NodeType::if_alt:
                     case NodeType::if_statement: {
                         cond = child->children().at(0); // check alternate condition type
                         if (get_type(cond)->name() != "INTEGER" && get_type(cond)->name() != "BOOLEAN") {
