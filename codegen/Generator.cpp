@@ -1,25 +1,32 @@
 //
-// Created by moltmanns on 1/26/25.
+// Created by moltmanns on 1/30/25.
 //
 
 #include "Generator.h"
 
-#include <deque>
-#include <stack>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Verifier.h>
-#include <llvm/Target/TargetMachine.h>
+#include <llvm/IR/Module.h>
+#include <llvm/TargetParser/Triple.h>
 #include <parser/ast/nodes/IdentNode.h>
 
+#include "LLVMMachine.h"
 #include "parser/ast/nodes/LiteralNode.h"
-#include "parser/ast/nodes/OperatorNode.h"
 #include "scoper/symbols/Constant.h"
+#include "scoper/symbols/Module.h"
+#include "scoper/symbols/PassedParam.h"
+#include "scoper/symbols/Procedure.h"
 #include "scoper/symbols/Variable.h"
 #include "scoper/symbols/types/ConstructedTypes.h"
-#include "scoper/symbols/Procedure.h"
-#include "scoper/symbols/PassedParam.h"
 
-void align_global(llvm::GlobalVariable *global, llvm::DataLayout *layout, const llvm::Align *align) {
+// File is a little ugly! Rife with lots of repetition that could've probably been avoided had this been written with generics in mind
+// Programmers that don't use generics when they should do not get a little handful of cranberries as a treat.
+// LET IT BE KNOWN! the fellas over at llvm should not have made it possible
+// to call BasicBlock::create() without passing in a parent function! took me 2 days to fix the stupid typo!
+// but good programmers get a little handful of cranberries as a little treat for killing evil bugs
+
+void Generator::align_global(llvm::GlobalVariable *global, llvm::DataLayout *layout, const llvm::Align *align) {
     auto size = layout->getTypeStoreSize(global->getType());
     if (size >= align->value()) {
         global->setAlignment(llvm::MaybeAlign(*align));
@@ -33,186 +40,186 @@ void align_global(llvm::GlobalVariable *global, llvm::DataLayout *layout, const 
     }
 }
 
-llvm::Module * Generator::gen_module(const Module *module_symbol) const {
-    auto ll_module = new llvm::Module(module_symbol->name(), ctx_);
-    ll_module->setDataLayout(tm_.createDataLayout());
-    ll_module->setTargetTriple(tm_.getTargetTriple().getTriple());
-    llvm::IRBuilder<> builder(ctx_);
+llvm::Module* Generator::generate_module(const Module *module_symbol, llvm::LLVMContext &context, const llvm::DataLayout& data_layout, const llvm::Triple& triple) {
+    auto module = new llvm::Module(module_symbol->name(), context);
+    module->setDataLayout(data_layout);
+    module->setTargetTriple(triple.getTriple());
+
+    llvm::IRBuilder<> builder(context);
 
     BASIC_TYPE_INT->llvm_type = builder.getInt32Ty();
     BASIC_TYPE_BOOL->llvm_type = builder.getInt1Ty();
 
-    auto layout = ll_module->getDataLayout();
-    //auto align = layout.getStackAlignment();
-
-    // generate declarations (constants, variables, type and procedure signatures)
-    for (const auto& symbol : module_symbol->scope_->table_) {
-        gen_dec(symbol, builder, *ll_module, true);
+    // process declarations
+    for (const auto &symbol : module_symbol->scope_->table_) {
+        if (auto constant = dynamic_pointer_cast<Constant>(symbol); constant) {
+            module->insertGlobalVariable(declare_const(constant));
+        }
+        else if (auto derived_type = dynamic_pointer_cast<DerivedType>(symbol); derived_type) {
+            derived_type->llvm_type = derived_type->base_type()->llvm_type;
+        }
+        else if (auto record_type = dynamic_pointer_cast<RecordType>(symbol); record_type) {
+            std::vector<llvm::Type*> fields;
+            for (const auto &field : record_type->fields()) {
+                fields.push_back(field.second->llvm_type);
+            }
+            record_type->llvm_type = llvm::StructType::get(context, fields, false);
+        }
+        else if (auto array_type = dynamic_pointer_cast<ArrayType>(symbol); array_type) {
+            array_type->llvm_type = llvm::ArrayType::get(array_type->base_type()->llvm_type, static_cast<uint64_t>(array_type->length()));
+        }
+        else if (auto variable = dynamic_pointer_cast<Variable>(symbol); variable) {
+            module->insertGlobalVariable(declare_global_variable(variable));
+        }
+        else if (auto procedure = dynamic_pointer_cast<Procedure>(symbol); procedure) {
+            create_func(procedure, module, builder);
+        }
     }
 
-    // define external printf
-#ifdef _LLVM_LEGACY
-    auto sig = llvm::FunctionType::get(builder.getInt32Ty(), { builder.getInt8PtrTy() }, true);
-#else
-    auto sig = llvm::FunctionType::get(builder.getInt32Ty(), { builder.getPtrTy() }, true);
-#endif
-    ll_module->getOrInsertFunction("printf", sig);
-
-    // define module entry
-    auto main_callee = ll_module->getOrInsertFunction("main", builder.getVoidTy());
-    auto main_func = llvm::cast<llvm::Function>(main_callee.getCallee());
-    auto entry = llvm::BasicBlock::Create(builder.getContext(), "main", main_func);
+    // entry basic block
+    auto main = module->getOrInsertFunction("main", builder.getVoidTy());
+    auto function = llvm::cast<llvm::Function>(main.getCallee());
+    auto entry = llvm::BasicBlock::Create(context, "entry", function);
     builder.SetInsertPoint(entry);
 
-    // process the module's statements
-    for (const auto& statement : module_symbol->sseq_node->children()) {
-        gen_statement(statement, builder, *ll_module, *module_symbol->scope_);
+    // main statements
+    for (const auto &statement : module_symbol->sseq_node->children()) {
+        auto last_spot = generate_statement(statement, builder, *module_symbol->scope_, function);
+        builder.SetInsertPoint(last_spot);
     }
 
-    //auto str = builder.CreateGlobalStringPtr("Test\n");
-    //builder.CreateCall(ll_module->getFunction("printf"), str);
-
-    // create the return point for the main function
     builder.CreateRetVoid();
-    llvm::verifyFunction(*main_func);
-    llvm::verifyModule(*ll_module, &llvm::errs());
-    return ll_module;
+
+    return module;
 }
 
-// generate code for a statement
-void Generator::gen_statement(const std::shared_ptr<Node> &n, llvm::IRBuilder<> &builder, llvm::Module& ll_mod, Scope& scope) const {
-    switch (n->type()) {
-        case NodeType::assignment: {
-            // assignments are ident, expression
-            auto ident = std::dynamic_pointer_cast<IdentNode>(n->children().front());
-            auto expr = n->children().back();
-            auto expr_res = eval_expr(expr, builder, ll_mod, scope);
-            auto dest = get_ident_ptr(ident, builder, ll_mod, scope);
-            builder.CreateStore(expr_res, dest.first);
-            break;
-        }
-        case NodeType::proc_call: {
-            auto ident = std::dynamic_pointer_cast<IdentNode>(n->children().front());
-            auto proc = scope.lookup_by_name<Procedure>(ident->name());
-            std::vector<llvm::Value*> args;
-            for (long unsigned int i = 1; i < n->children().size(); i++) {
-                auto param = std::dynamic_pointer_cast<PassedParam>(proc->scope_->lookup_by_index(i - 1));
-                if (param->is_reference()) {
-                    auto passed_ident = std::dynamic_pointer_cast<IdentNode>(n->children().at(i));
-                    if (!passed_ident) {
-                        logger_.error(n->children().at(i)->pos(), "Cannot pass values by reference");
-                        return;
-                    }
-                    args.push_back(get_ident_ptr(passed_ident, builder, ll_mod, scope).first); // if a parameter is a reference, just push back its pointer
-                }
-                else
-                    args.push_back(eval_expr(n->children().at(i), builder, ll_mod, scope)); // otherwise evaluate it and push back the eval'd thing
-            }
-            auto func = ll_mod.getFunction(ident->name());
-            builder.CreateCall(func, args);
-            break;
-        }
-        case NodeType::if_statement: {
-            // if statements are:
-            // expression statementseq
-            // any number of if_alt which are expression statementseq
-            // one or zero if_default which is statementseq
-            // one BB per statement seq
-            std::vector<llvm::BasicBlock*> cond_blocks;
-            std::vector<llvm::Value*> conds;
-            //llvm::BasicBlock* end_block = nullptr;
-
-            //conds.push_back(eval_expr(n->children().at(0), builder, ll_mod, scope));
-            auto cb = llvm::BasicBlock::Create(builder.getContext(), "if");
-            cond_blocks.push_back(cb);
-
-            for (unsigned long int i = 2; i < n->children().size(); i++) {
-                auto node = n->children().at(i);
-                if (node->type() == NodeType::if_alt) {
-                    //conds.push_back(eval_expr(node->children().at(0), builder, ll_mod, scope));
-                    cb = llvm::BasicBlock::Create(builder.getContext(), "elif");
-                    cond_blocks.push_back(cb);
-                }
-                else {
-                    //end_block = llvm::BasicBlock::Create(builder.getContext(), "else");
-                }
-            }
-
-            //end_block->getContext();
-
-            break;
-        }
-        case NodeType::if_alt: {
-            break;
-        }
-        case NodeType::while_statement: {
-            break;
-        }
-        case NodeType::unknown: {
-            break;
-        }
-        default: {
-            logger_.error(n->pos(), "Generation failed");
-        }
-    }
+llvm::GlobalVariable* Generator::declare_const(const std::shared_ptr<Constant> &constant) {
+    auto* llvm_const = new llvm::GlobalVariable(BASIC_TYPE_INT->llvm_type, true, llvm::GlobalVariable::InternalLinkage, llvm::Constant::getIntegerValue(BASIC_TYPE_INT->llvm_type, constant->toAPInt(BASIC_TYPE_INT->llvm_type->getIntegerBitWidth())), constant->name());
+    constant->llvm_ptr = llvm_const;
+    return llvm_const;
 }
 
-// evaluate a given expression node, store its result in a SYMBOL
-llvm::Value* Generator::eval_expr(const std::shared_ptr<Node> &n, llvm::IRBuilder<> &builder, llvm::Module &ll_mod, Scope& scope) const {
-    switch (n->type()) {
-        case NodeType::literal: { // for literals, just return their value
-            auto lit = std::dynamic_pointer_cast<LiteralNode>(n);
-            if (lit->is_bool()) return builder.getInt1(lit->value());
-            return builder.getInt32(lit->value());
+llvm::GlobalVariable* Generator::declare_global_variable(const std::shared_ptr<Variable> &variable) {
+    auto* llvm_var = new llvm::GlobalVariable(variable->type()->llvm_type, false, llvm::GlobalVariable::InternalLinkage, llvm::Constant::getNullValue(variable->type()->llvm_type), variable->name());
+    variable->llvm_ptr = llvm_var;
+    return llvm_var;
+}
+
+llvm::Type* Generator::declare_derived_type(const std::shared_ptr<DerivedType> &derived_type) {
+    derived_type->llvm_type = derived_type->base_type()->llvm_type;
+    return derived_type->llvm_type;
+}
+
+llvm::StructType* Generator::declare_record_type(const std::shared_ptr<RecordType> &record_type, llvm::LLVMContext &context) {
+    std::vector<llvm::Type*> fields;
+    for (const auto &field : record_type->fields()) {
+        fields.push_back(field.second->llvm_type);
+    }
+    llvm::StructType *t = llvm::StructType::get(context, fields, false);
+    record_type->llvm_type = t;
+    return t;
+}
+
+llvm::ArrayType* Generator::declare_array_type(const std::shared_ptr<ArrayType> &array_type) {
+    llvm::ArrayType* t = llvm::ArrayType::get(array_type->base_type()->llvm_type, static_cast<uint64_t>(array_type->length()));
+    array_type->llvm_type = t;
+    return t;
+}
+
+llvm::AllocaInst* Generator::allocate_local_variable(const std::shared_ptr<Variable> &variable, llvm::IRBuilder<> &builder) {
+    llvm::AllocaInst* alloc_place = builder.CreateAlloca(variable->type()->llvm_type, nullptr, variable->name());
+    variable->llvm_ptr = alloc_place;
+    return alloc_place;
+}
+
+llvm::LoadInst* Generator::load_local_variable(const std::shared_ptr<Variable> &variable, llvm::IRBuilder<> &builder) {
+    llvm::LoadInst* load_place = builder.CreateLoad(variable->type()->llvm_type, variable->llvm_ptr, variable->name());
+    return load_place;
+}
+
+// always dereference parameters when you load them.
+llvm::Value* Generator::load_local_variable(const std::shared_ptr<PassedParam> &passed_param, llvm::IRBuilder<> &builder) {
+    auto func = builder.GetInsertBlock()->getParent(); // what function are we working in?
+    auto param = func->arg_begin() + passed_param->index(); // find the parameter
+    return builder.CreateLoad(passed_param->type()->llvm_type, param, passed_param->name());
+}
+
+// should be followed by a call to a load or store instruction - this returns a pointer
+std::pair<llvm::Value *, llvm::Type *> Generator::get_ptr_from_index(const std::shared_ptr<Variable> &variable, const std::shared_ptr<Node> &selector_block, Scope &scope, llvm::IRBuilder<> &builder) {
+    llvm::Value *most_recent_load = variable->llvm_ptr;
+    llvm::Value *index = nullptr;
+    llvm::Type *end_ptr_type = nullptr;
+    for (const std::shared_ptr<Node> &selector : selector_block->children()) {
+        if (selector->type() == NodeType::sel_index) {
+            auto array_type = dynamic_pointer_cast<ArrayType>(variable->type());
+            end_ptr_type = array_type->base_type()->llvm_type;
+            index = evaluate_expression(selector->children().front(), builder, scope);
+            most_recent_load = builder.CreateInBoundsGEP(array_type->llvm_type, most_recent_load, { builder.getInt32(0), index });
         }
-        case NodeType::ident: {
-            // for identifiers, look up the pointer to the global value and load that value
-            auto ident = std::dynamic_pointer_cast<IdentNode>(n);
-            auto src = get_ident_ptr(ident, builder, ll_mod, scope);
-            return builder.CreateLoad(src.second, src.first);
-        }
-        default: {
-            // for anything else
-            // iterate over the children and write instructions accordingly
-            // following algorithm inspired by shunting yard, but adapted to the structure of my ast
-            //TODO: check unary operators - they bug out sometimes
-            std::stack<OperatorNode*> operators;
-            std::stack<llvm::Value*> values;
-            for (const auto& child : n->children()) {
-                if (child) { //this null check shouldn't be needed. sometimes the parser generates empty expressions and i can't figure out why. but they don't seem to affect correctness so i'm not gonna worry too hard
-                    if (child->type() == NodeType::op) {
-                        operators.push(dynamic_cast<OperatorNode*>(child.get()));
-                    }
-                    else {
-                        values.push(eval_expr(child, builder, ll_mod, scope));
-                    }
-                }
-            }
-            while (!operators.empty()) {
-                auto op = operators.top();
-                operators.pop();
-                if (op->operation() == PLUS_UNARY || op->operation() == MINUS_UNARY) {
-                    auto lhs = values.top();
-                    values.pop();
-                    values.push(apply_op(lhs, op, nullptr, builder));
-                }
-                else {
-                    auto lhs = values.top();
-                    values.pop();
-                    auto rhs = values.top();
-                    values.pop();
-                    values.push(apply_op(lhs, op, rhs, builder));
-                }
-            }
-            //FIXME there is still a lot of bugginess surround unary operators.
-            // too bad! a problem for a later date!
-            return values.top();
+        else if (selector->type() == NodeType::sel_field) {
+            auto rec_type = std::dynamic_pointer_cast<RecordType>(variable->type());
+            auto field_ident = std::dynamic_pointer_cast<IdentNode>(selector->children().front());
+            auto field_index = static_cast<uint32_t>(rec_type->get_field_index_by_name(field_ident->name()));
+            end_ptr_type = rec_type->get_field_type_by_name(field_ident->name())->llvm_type;
+            most_recent_load = builder.CreateInBoundsGEP(rec_type->llvm_type, most_recent_load, { builder.getInt32(0), builder.getInt32(field_index) });
         }
     }
+    return { most_recent_load, end_ptr_type };
+}
+
+// should be followed by a call to a load or store instruction - this returns a pointer, and the type of the thing that pointer points to
+std::pair<llvm::Value *, llvm::Type *> Generator::get_ptr_from_index(
+    const std::shared_ptr<PassedParam> &passed_param, const std::shared_ptr<Node> &selector_block, Scope &scope,
+    llvm::IRBuilder<> &builder) {
+    auto func = builder.GetInsertBlock()->getParent();
+    llvm::Value *most_recent_load = func->arg_begin() + passed_param->index();
+    llvm::Type *end_ptr_type = nullptr;
+    for (const std::shared_ptr<Node> &selector : selector_block->children()) {
+        if (selector->type() == NodeType::sel_index) {
+            auto array_type = std::dynamic_pointer_cast<ArrayType>(passed_param->type());
+            end_ptr_type = array_type->base_type()->llvm_type;
+            auto index = evaluate_expression(selector->children().front(), builder, scope);
+            most_recent_load = builder.CreateInBoundsGEP(array_type->llvm_type, most_recent_load, { builder.getInt32(0), index });
+        }
+        else if (selector->type() == NodeType::sel_field) {
+            auto rec_type = std::dynamic_pointer_cast<RecordType>(passed_param->type());
+            auto field_ident = std::dynamic_pointer_cast<IdentNode>(selector->children().front());
+            auto field_index = static_cast<uint32_t>(rec_type->get_field_index_by_name(field_ident->name()));
+            end_ptr_type = rec_type->get_field_type_by_name(field_ident->name())->llvm_type;
+            most_recent_load = builder.CreateInBoundsGEP(rec_type->llvm_type, most_recent_load, { builder.getInt32(0), builder.getInt32(field_index) });
+        }
+    }
+    return { most_recent_load, end_ptr_type };
+}
+
+llvm::StoreInst* Generator::store_val_to_variable(llvm::Value* val, const std::shared_ptr<Variable> &variable, llvm::IRBuilder<> &builder) {
+    llvm::StoreInst* store_place = builder.CreateStore(val, variable->llvm_ptr);
+    return store_place;
+}
+
+llvm::StoreInst* Generator::store_val_to_variable(llvm::Value* val, std::shared_ptr<Variable> &variable, const std::shared_ptr<Node>& selector_block, Scope &scope, llvm::IRBuilder<> &builder) {
+    auto loaded = get_ptr_from_index(variable, selector_block, scope, builder);
+    return builder.CreateStore(val, loaded.first);
+}
+
+// again, always store to the thing pointed to by the parameter (if it is a reference)
+llvm::StoreInst* Generator::store_val_to_variable(llvm::Value* val, const std::shared_ptr<PassedParam> &passed_param, llvm::IRBuilder<> &builder) {
+    auto func = builder.GetInsertBlock()->getParent();
+    auto param = func->arg_begin() + passed_param->index();
+    return builder.CreateStore(val, param);
+}
+
+llvm::StoreInst* Generator::store_val_to_variable(llvm::Value* val, const std::shared_ptr<PassedParam> &passed_param, const std::shared_ptr<Node>& selector_block, Scope &scope, llvm::IRBuilder<> &builder) {
+    auto loaded = get_ptr_from_index(passed_param, selector_block, scope, builder);
+    return builder.CreateStore(val, loaded.first);
 }
 
 // apply an op node to two loaded values
-llvm::Value * Generator::apply_op(llvm::Value *lhs, OperatorNode *op, llvm::Value *rhs, llvm::IRBuilder<> &builder) const {
+// not pointers!!
+llvm::Value * Generator::apply_op(llvm::Value *lhs, const OperatorNode *op, llvm::Value *rhs, llvm::IRBuilder<> &builder) const {
+    if (rhs->getType() == builder.getPtrTy() || lhs->getType() == builder.getPtrTy()) {
+        fprintf(stderr, "CANNOT OPERATE ON POINTERS\n");
+    }
     switch (op->operation()) {
         case EQ: {
             return builder.CreateCmp(llvm::CmpInst::ICMP_EQ, lhs, rhs);
@@ -263,165 +270,272 @@ llvm::Value * Generator::apply_op(llvm::Value *lhs, OperatorNode *op, llvm::Valu
             return builder.CreateNeg(lhs);
         }
         default: {
-            logger_.error(op->pos(), "Unsupported operator");
             return nullptr;
         }
     }
 }
 
-// evaluate a given ident node
-// return
-std::pair<llvm::Value *, llvm::Type *> Generator::get_ident_ptr(const std::shared_ptr<IdentNode> &ident,
-                                                                llvm::IRBuilder<> &builder, llvm::Module &ll_mod,
-                                                                Scope &scope) const {
-    llvm::Value* ptr = nullptr;
-    llvm::Type* ptr_type;
-    std::shared_ptr<Type> scope_type;
-    //SymbolKind ident_kind;
-    // lookup the identifier in the scope
-    if (auto param = scope.lookup_by_name<PassedParam>(ident->name()); param) {
-        //TODO this is still wrong
-        // parameter values probably have to be looked up in the parameter's procedure
-        //llvm::Value* param_ptr = nullptr;
-        //for (const auto& p : param->procedure()->llvm_params_)
-        //ident_kind = param->kind_;
-        ptr = param->llvm_ptr;
-        ptr_type = param->llvm_type;
-        scope_type = param->type();
-    }
-    else if (auto var = scope.lookup_by_name<Variable>(ident->name())) {
-        //ident_kind = var->kind_;
-        ptr = var->llvm_ptr;
-        ptr_type = var->llvm_type;
-        scope_type = var->type();
-    }
-    else if (auto constant = scope.lookup_by_name<Constant>(ident->name())) {
-        //ident_kind = constant->kind_;
-        ptr = constant->llvm_ptr;
-        ptr_type = constant->llvm_type;
-        scope_type = scope.lookup_by_name<Type>("INTEGER");
-    }
-    else {
-        logger_.error(ident->pos(), "Generation failed (unable to find symbol)");
-        return std::pair(ptr, ptr_type);
-    }
-    if (ident->selector_block()) { // if there is a selector block, evaluate it and access identifier's element according to if struct or array
-        for (const std::shared_ptr<Node>& selector : ident->selector_block()->children()) {
-            // as long as there are still selectors, find out what index in the destination they point to and continue from there
-            if (selector->type() == NodeType::sel_index) {
-                auto index = eval_expr(selector->children().front(), builder, ll_mod, scope);
-                ptr = builder.CreateInBoundsGEP(ptr_type, ptr, { builder.getInt32(0), index });
-            }
-            else if (selector->type() == NodeType::sel_field) {
-                auto rec_type = std::dynamic_pointer_cast<RecordType>(scope_type);
-                auto field_ident = std::dynamic_pointer_cast<IdentNode>(selector->children().front());
-                auto field_index = static_cast<unsigned int>(rec_type->get_field_index_by_name(field_ident->name()));
-                ptr = builder.CreateInBoundsGEP(ptr_type, ptr, { builder.getInt32(0), builder.getInt32(field_index) });
-            }
+// evaluate an expression
+// dereferences pointers!
+llvm::Value* Generator::evaluate_expression(const std::shared_ptr<Node> &expression_node, llvm::IRBuilder<> &builder, Scope &scope) {
+    switch (expression_node->type()) {
+        case NodeType::literal: {
+            auto lit = std::dynamic_pointer_cast<LiteralNode>(expression_node);
+            if (lit->is_bool()) return builder.getInt1(lit->value());
+            return builder.getInt32(lit->value());
         }
-    }
-    return std::pair(ptr, ptr_type);
-}
-
-void Generator::gen_dec(const std::shared_ptr<Symbol> &sym, llvm::IRBuilder<> &builder, llvm::Module &ll_mod, const bool global=false) const {
-    auto layout = ll_mod.getDataLayout();
-    auto align = layout.getStackAlignment();
-
-    switch (sym->kind_) {
-        case CONSTANT: {
-            auto constant = std::dynamic_pointer_cast<Constant>(sym);
-            // constants always have immutable runtime addresses which makes them global variables
-            // just generate a new global variable
-            auto cons = new llvm::GlobalVariable(ll_mod, BASIC_TYPE_INT->llvm_type, true, llvm::GlobalValue::InternalLinkage, llvm::Constant::getIntegerValue(BASIC_TYPE_INT->llvm_type, constant->toAPInt(BASIC_TYPE_INT->llvm_type->getIntegerBitWidth())), constant->name());
-            align_global(cons, &layout, &align); // align it in memory
-            // store value type and pointer in the scope
-            constant->llvm_type = cons->getValueType();
-            constant->llvm_ptr = cons;
-            break;
-        }
-        case VARIABLE: {
-            auto variable = std::dynamic_pointer_cast<Variable>(sym);
-            auto type = variable->type()->llvm_type;
-            auto name = variable->name();
-            // if this declaration is global (at the module level) declare a mutable global variable
-            // otherwise allocate space on the stack
-            llvm::Value* var;
-            if (global) var = new llvm::GlobalVariable(ll_mod, type, false, llvm::GlobalValue::InternalLinkage, llvm::Constant::getNullValue(type), name);
-            else var = builder.CreateAlloca(type, nullptr, name);
-            variable->llvm_type = var->getType();
-            variable->llvm_ptr = var;
-            break;
-        }
-        case PASSED_PARAM: {
-            // do not generate declarations for parameters - these are handled as part of function construction
-            break;
-        }
-        case DERIVED_TYPE: {
-            auto derived = std::dynamic_pointer_cast<DerivedType>(sym);
-            auto base = derived->base_type();
-            derived->llvm_type = base->llvm_type;
-            break;
-        }
-        case RECORD_TYPE: {
-            auto record = std::dynamic_pointer_cast<RecordType>(sym);
-            std::vector<llvm::Type*> fields;
-            for (const auto& field : record->fields()) {
-                fields.push_back(field.second->llvm_type);
-            }
-            auto type = llvm::StructType::get(ctx_, fields); // we don't pack structs because we're lazy and there's really no need
-            record->llvm_type = type;
-            break;
-        }
-        case ARRAY_TYPE: {
-            auto array = std::dynamic_pointer_cast<ArrayType>(sym);
-            auto base = array->base_type()->llvm_type;
-            auto dim = array->length();
-            auto type = llvm::ArrayType::get(base, static_cast<size_t>(dim));
-            array->llvm_type = type;
-            break;
-        }
-        case PROCEDURE: {
-            auto procedure = std::dynamic_pointer_cast<Procedure>(sym);
-            auto name = procedure->name();
-            std::vector<llvm::Type*> args;
-            int param_idx = 0;
-            for (const auto& param: procedure->params_) {
-                if (const auto psym = std::dynamic_pointer_cast<PassedParam>(procedure->scope_->lookup_by_index(param_idx)); psym->is_reference()) {
-                    args.push_back(builder.getPtrTy()); // if the symbol is a reference, set a pointer in the function signature
+        case NodeType::ident: {
+            auto ident = std::dynamic_pointer_cast<IdentNode>(expression_node);
+            llvm::Value* loaded = nullptr;
+            // first load the thing
+            if (auto param = scope.lookup_by_name<PassedParam>(ident->name())) {
+                if (ident->selector_block()) {
+                    auto [ptr, ptr_t] = get_ptr_from_index(param, ident->selector_block(), scope, builder);
+                    loaded = builder.CreateLoad(ptr_t, ptr);
                 }
                 else {
-                    const auto ptype = procedure->scope_->lookup_by_name<Type>(param.second);
-                    args.push_back(ptype->llvm_type); // otherwise set that parameter's type in the signature
+                    loaded = load_local_variable(param, builder);
                 }
-                param_idx++;
             }
-            // generate procedure signature and basic block
-            procedure->llvm_sig = llvm::FunctionType::get(builder.getVoidTy(), args, false); // oberon procs have no return type and no varargs
-            procedure->llvm_function = llvm::cast<llvm::Function>(ll_mod.getOrInsertFunction(name, procedure->llvm_sig).getCallee());
-            auto arg_it = procedure->llvm_function->arg_begin();
-            for (unsigned long int i = 0; i < procedure->params_.size(); i++) {
-                auto scope_param = std::dynamic_pointer_cast<PassedParam>(procedure->scope_->lookup_by_index(i));
-                scope_param->llvm_type = args.at(i);
-                scope_param->llvm_ptr = arg_it++;
+            if (auto constant = scope.lookup_by_name<Constant>(ident->name())) {
+                loaded = builder.getInt32(constant->value());
             }
-            auto proc_bb = llvm::BasicBlock::Create(builder.getContext(), procedure->name(), procedure->llvm_function);
-            auto proc_exit = llvm::BasicBlock::Create(builder.getContext(), procedure->name() + "_exit", llvm::cast<llvm::Function>(procedure->llvm_function));
-            builder.SetInsertPoint(proc_bb);
-            // generate procedure locals
-            std::vector<llvm::Type*> locals;
-            for (const auto& local : procedure->scope_->table_) {
-                gen_dec(local, builder, ll_mod, false);
+            if (auto var = scope.lookup_by_name<Variable>(ident->name())) {
+                if (ident->selector_block()) {
+                    auto [ptr, ptr_t] = get_ptr_from_index(var, ident->selector_block(), scope, builder);
+                    loaded = builder.CreateLoad(ptr_t, ptr);
+                }
+                else {
+                    loaded = load_local_variable(var, builder);
+                }
             }
-            // generate procedure statements
-            for (const auto& statement : procedure->sseq_node_->children()) {
-                gen_statement(statement, builder, ll_mod, *procedure->scope_);
-            }
-            builder.SetInsertPoint(proc_exit);
-            builder.CreateRetVoid();
-            break;
+            return loaded;
         }
         default: {
-            logger_.error(*sym->pos(), "Unexpected symbol during generation");
+            std::stack<OperatorNode*> operators;
+            std::stack<llvm::Value*> values;
+            for (const auto &child : expression_node->children()) {
+                if (child) {
+                    if (child->type() == NodeType::op)
+                        operators.push(dynamic_cast<OperatorNode*>(child.get()));
+                    else {
+                        values.push(evaluate_expression(child, builder, scope));
+                    }
+                }
+            }
+            while (!operators.empty()) {
+                auto op = operators.top();
+                operators.pop();
+                if (op->operation() == PLUS_UNARY || op->operation() == MINUS_UNARY) {
+                    auto lhs = values.top();
+                    values.pop();
+                    values.push(apply_op(lhs, op, nullptr, builder));
+                }
+                else {
+                    // we push left-right, so we have to pop right-left
+                    auto rhs = values.top();
+                    values.pop();
+                    auto lhs = values.top();
+                    values.pop();
+                    values.push(apply_op(lhs, op, rhs, builder));
+                }
+            }
+            return values.top();
         }
     }
+}
+
+llvm::BasicBlock *Generator::generate_statement(const std::shared_ptr<Node> &statement, llvm::IRBuilder<> &builder,
+                                                Scope &scope, llvm::Function *function) {
+    switch (statement->type()) {
+        case NodeType::assignment: {
+            auto ident = std::dynamic_pointer_cast<IdentNode>(statement->children().front());
+            auto expr = statement->children().back();
+
+            auto expr_res = evaluate_expression(expr, builder, scope);
+
+            if (auto variable = scope.lookup_by_name<Variable>(ident->name()); variable) {
+                if (ident->selector_block()) {
+                    return store_val_to_variable(expr_res, variable, ident->selector_block(), scope, builder)->getParent();
+                }
+                return store_val_to_variable(expr_res, variable, builder)->getParent();
+            }
+            if (auto param = scope.lookup_by_name<PassedParam>(ident->name()); param) {
+                if (ident->selector_block()) {
+                    return store_val_to_variable(expr_res, param, ident->selector_block(), scope, builder)->getParent();
+                }
+                return store_val_to_variable(expr_res, param, builder)->getParent();
+            }
+            return nullptr;
+        }
+        case NodeType::proc_call: {
+            // proc_call is proc ident, and then any number of arguments (these can be expressions, literals, etc)
+            auto ident = std::dynamic_pointer_cast<IdentNode>(statement->children().front());
+
+            auto proc = scope.lookup_by_name<Procedure>(ident->name());
+
+            std::vector<llvm::Value*> args;
+            for (uint64_t i = 1; i < statement->children().size(); i++) {
+                auto passed_to = std::dynamic_pointer_cast<PassedParam>(proc->scope_->lookup_by_index(i - 1));
+                if (passed_to->is_reference()) {
+                    // if we are passing into a reference, the things we're passing must be declared values, and they can't be constants
+                    // TODO: this should be enforced by the typechecker!
+                    auto param_ident = std::dynamic_pointer_cast<IdentNode>(statement->children().at(i));
+                    auto passed_in = scope.lookup_by_name<Symbol>(param_ident->name());
+                    args.push_back(passed_in->llvm_ptr); // just pass the thing's pointer
+                }
+                else {
+                    // if the thing isn't a reference, evaluate then pass
+                    args.push_back(evaluate_expression(statement->children().at(i), builder, scope));
+                }
+            }
+
+            return builder.CreateCall(proc->llvm_function, args)->getParent();
+        }
+        case NodeType::if_statement: {
+            /*
+             * if statements are a little funny in the AST
+             * if
+             *  condition
+             *  statements
+             *  optionally: any number of subsequent ifs
+             *  optionally: one if default
+             *
+             * we can always create the if, and we can always create the else
+             * then generate the in betweens iteratively, and create jumps as so:
+             * if condition jump to block you're in, else jump to next block
+             */
+            /*auto start = builder.GetInsertBlock();
+            auto if_block = llvm::BasicBlock::Create(builder.getContext(), "if", function);
+            auto else_block = statement->children().back()->type() == NodeType::if_default ? llvm::BasicBlock::Create(builder.getContext(), "else", function) : nullptr;
+            auto end_block = llvm::BasicBlock::Create(builder.getContext(), "fi", function); // if there's a default we don't need an end block
+
+            builder.SetInsertPoint(start); // insert conditional evaluation
+            auto cond = evaluate_expression(statement->children().front(), builder, scope);
+            builder.CreateCondBr(cond, if_block, else_block ? else_block : end_block); // jump according to if there's a default block or not
+
+            for (const auto &st : statement->children().at(1)->children()) {
+                builder.SetInsertPoint(if_block);
+                generate_statement(st, builder, scope, function);
+            }
+            builder.SetInsertPoint(if_block);
+            builder.CreateBr(end_block);
+
+            for (auto branch = statement->children().begin() + 2; branch != statement->children().end(); ++branch) {
+                builder.SetInsertPoint(else_block);
+                generate_statement(*branch, builder, scope, function);
+            }
+
+            builder.SetInsertPoint(end_block);*/
+
+            break;
+        }
+        case NodeType::if_alt: {
+            /*auto start = builder.GetInsertBlock();
+            auto if_block = llvm::BasicBlock::Create(builder.getContext(), "if", function);
+            auto default_block = llvm::BasicBlock::Create(builder.getContext(), "else", function);
+
+            builder.SetInsertPoint(start);
+            auto cond = evaluate_expression(statement->children().front(), builder, scope);
+            builder.CreateCondBr(cond, if_block, default_block);
+
+            for (const auto &st : statement->children().at(1)->children()) {
+                builder.SetInsertPoint(if_block);
+                generate_statement(st, builder, scope, function);
+            }
+
+            builder.SetInsertPoint(default_block);*/
+            break;
+        }
+        case NodeType::if_default: {
+            /*for (const auto &st : statement->children().front()->children()) {
+                generate_statement(st, builder, scope, function);
+            }*/
+            break;
+        }
+        case NodeType::while_statement: {
+            // whiles are a condition followed by a statement sequence
+            // 3 blocks seems like too many but for the life of me i could not get it with 2
+            auto cond_block = llvm::BasicBlock::Create(builder.getContext(), "cond", function);
+            auto while_block = llvm::BasicBlock::Create(builder.getContext(), "while", function);
+            auto after_block = llvm::BasicBlock::Create(builder.getContext(), "elihw", function);
+
+            builder.SetInsertPoint(cond_block);
+            auto cond = evaluate_expression(statement->children().front(), builder, scope);
+            builder.CreateCondBr(cond, while_block, after_block);
+            builder.SetInsertPoint(while_block);
+
+            for (const auto &child : statement->children().at(1)->children()) {
+                auto place = generate_statement(child, builder, scope, function);
+                builder.SetInsertPoint(place);
+            }
+            builder.CreateBr(cond_block);
+
+            return after_block;
+        }
+        default: {
+            return builder.GetInsertBlock();
+        }
+    }
+    return builder.GetInsertBlock();
+}
+
+llvm::Function* Generator::create_func(const std::shared_ptr<Procedure> &procedure, llvm::Module* module, llvm::IRBuilder<> &builder) {
+    // construct function signature
+    std::vector<llvm::Type*> arg_types;
+    for (const auto &param : procedure->params_) {
+        if (const auto param_symbol = procedure->scope_->lookup_by_name<PassedParam>(param.first); param_symbol && param_symbol->is_reference()) {
+            arg_types.push_back(builder.getPtrTy());
+        }
+        else {
+            const auto param_type = procedure->scope_->outer_->lookup_by_name<Type>(param.second);
+            arg_types.push_back(param_type->llvm_type);
+        }
+    }
+    auto* func_type = llvm::FunctionType::get(builder.getVoidTy(), arg_types, false);
+    auto *func = llvm::Function::Create(func_type, llvm::GlobalValue::InternalLinkage, procedure->name(), module); // declare function in the module, internally visible
+    procedure->llvm_function = func;
+    auto entry = llvm::BasicBlock::Create(builder.getContext(), procedure->name(), func);
+
+    // process function declarations
+    for (const auto& symbol : procedure->scope_->table_) {
+        builder.SetInsertPoint(entry); // insert after function start
+        if (auto constant = dynamic_pointer_cast<Constant>(symbol); constant) {
+            module->insertGlobalVariable(declare_const(constant));
+        }
+        else if (auto derived_type = dynamic_pointer_cast<DerivedType>(symbol); derived_type) {
+            derived_type->llvm_type = derived_type->base_type()->llvm_type;
+        }
+        else if (auto record_type = dynamic_pointer_cast<RecordType>(symbol); record_type) {
+            std::vector<llvm::Type*> fields;
+            for (const auto &field : record_type->fields()) {
+                fields.push_back(field.second->llvm_type);
+            }
+            record_type->llvm_type = llvm::StructType::get(builder.getContext(), fields, false);
+        }
+        else if (auto array_type = dynamic_pointer_cast<ArrayType>(symbol); array_type) {
+            array_type->llvm_type = llvm::ArrayType::get(array_type->base_type()->llvm_type, static_cast<uint64_t>(array_type->length()));
+        }
+        else if (auto variable = dynamic_pointer_cast<Variable>(symbol); variable) {
+            allocate_local_variable(variable, builder);
+        }
+        else if (auto proc = dynamic_pointer_cast<Procedure>(symbol); proc) {
+            create_func(proc, module, builder);
+        }
+    }
+
+    builder.SetInsertPoint(entry);
+    llvm::BasicBlock *place = nullptr;
+
+    // process function statements
+    for (const auto &statement : procedure->sseq_node_->children()) {
+        place = generate_statement(statement, builder, *procedure->scope_, func);
+    }
+
+    builder.SetInsertPoint(place);
+    builder.CreateRetVoid();
+
+    llvm::verifyFunction(*func);
+
+    return func;
 }

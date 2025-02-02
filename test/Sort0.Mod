@@ -25,7 +25,11 @@ CONST d = 5;
 VAR c: INTEGER;
 f: INTARRAY;
 BEGIN
-    bool := e[a - 1] < a
+    WHILE TRUE DO
+        a := d;
+        WHILE FALSE DO
+        END
+    END
 END Test;
 
 (* Initializes the array. *)
