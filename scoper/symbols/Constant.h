@@ -9,15 +9,12 @@
 
 #include "Symbol.h"
 
-#define CONSTANT_SIZE 0 // constants take up no space in the AR because they are eval'd at compile time
-
 class Constant final : public Symbol {
 private:
     long value_;
 
 public:
-    Constant(std::string name, const long value, FilePos pos) : Symbol(std::move(name), std::move(pos), CONSTANT_SIZE), value_(value) {
-        kind_ = SymbolKind::CONSTANT;
+    Constant(std::string name, const long value, FilePos pos) : Symbol(std::move(name), std::move(pos)), value_(value) {
     }
 
     [[nodiscard]] long value() const { return value_; }

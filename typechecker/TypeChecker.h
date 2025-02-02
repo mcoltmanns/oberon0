@@ -6,6 +6,7 @@
 #ifndef TYPECHECKER_H
 #define TYPECHECKER_H
 #include "parser/ast/visitor/NodeVisitor.h"
+#include "scoper/symbols/types/Type.h"
 
 enum class OutputFileType {
     AssemblyFile, LLVMIRFile, ObjectFile

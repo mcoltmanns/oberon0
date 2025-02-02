@@ -4,12 +4,10 @@
 
 #ifndef SYMTABLEGENERATOR_H
 #define SYMTABLEGENERATOR_H
-#include <map>
 #include <utility>
 #include <vector>
 
 #include "symbols/Symbol.h"
-#include "symbols/types/BaseTypes.h"
 #include "util/Logger.h"
 
 
@@ -39,11 +37,7 @@ public:
     void print(std::ostream& s);
     void print(std::ostream &s, int tabs);
 
-    int get_next_offset() const;
-
     void add(const std::shared_ptr<Symbol>& sym);
-
-    int symtbl_size() const;
 };
 
 #endif //SYMTABLEGENERATOR_H

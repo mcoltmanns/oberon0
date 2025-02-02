@@ -35,23 +35,22 @@ int main(const int argc, const char *argv[]) {
     logger.setLevel(LogLevel::DEBUG);
     Scanner scanner(filename, logger);
     Parser parser{scanner, logger};
-    auto mod = parser.parse(); // get an ast
-    if (logger.getErrorCount() != 0) goto print_status;
-    else {
-        mod->print(cout);
-        auto outer_scope = std::make_shared<Scope>(logger, ""); // declare empty outer scope
+    auto module_node = parser.parse(); // get an ast
+    if (logger.getErrorCount() == 0) {
+        module_node->print(cout);
+        auto module_name = std::dynamic_pointer_cast<IdentNode>(module_node->children().at(0))->name();
+        auto outer_scope = std::make_shared<Scope>(logger, "EXTERN"); // declare outer scope - this is also where basic types and external procedures go
         Scoper scoper = Scoper(outer_scope, logger); // get a scoper
-        scoper.visit(mod); // build the scope
-        if (logger.getErrorCount() != 0) goto print_status;
-        else {
+        scoper.visit(module_node); // build the scope
+        if (logger.getErrorCount() == 0) {
             outer_scope->print(cout);
-            auto module = outer_scope->lookup_by_name<Module>("Sort0");
+            auto module_symbol = outer_scope->lookup_by_name<Module>(module_name);
             auto tm = LLVMMachine();
             auto gen = Generator();
             auto ctx = llvm::LLVMContext();
-            auto code = gen.generate_module(module.get(), ctx, tm.TM->createDataLayout(), tm.TM->getTargetTriple());
+            auto code = gen.generate_module(module_symbol.get(), ctx, tm.TM->createDataLayout(), tm.TM->getTargetTriple());
             if (logger.getErrorCount() != 0) goto print_status;
-            tm.emit(code, module->name(), OutputFileType::LLVMIRFile);
+            tm.emit(code, module_symbol->name(), OutputFileType::LLVMIRFile);
         }
     }
 

@@ -14,8 +14,7 @@ private:
     std::vector<std::pair<std::string, std::shared_ptr<Type>>> fields_; // vector of fields - their names and their types
 
 public:
-    RecordType(std::string name, FilePos pos, const int size) : Type(std::move(name), std::move(pos), size) {
-        kind_ = RECORD_TYPE;
+    RecordType(std::string name, FilePos pos) : Type(std::move(name), std::move(pos)) {
     }
     ~RecordType() override;
 
@@ -30,8 +29,7 @@ private:
     std::shared_ptr<Type> base_type_;
 
 public:
-    ArrayType(std::string name, int length, std::shared_ptr<Type> base_type, FilePos pos, int size) : Type(name, pos, size), length_(length), base_type_(std::move(base_type)) {
-        kind_ = ARRAY_TYPE;
+    ArrayType(std::string name, int length, std::shared_ptr<Type> base_type, FilePos pos) : Type(name, pos), length_(length), base_type_(std::move(base_type)) {
     }
 
     ~ArrayType() override;
@@ -47,8 +45,7 @@ private:
     std::shared_ptr<Type> base_type_;
 
 public:
-    DerivedType(std::string name, const std::shared_ptr<Type> &base_type, FilePos pos) : Type(std::move(name), std::move(pos), base_type->size_) {
-        kind_ = DERIVED_TYPE;
+    DerivedType(std::string name, const std::shared_ptr<Type> &base_type, FilePos pos) : Type(std::move(name), std::move(pos)) {
         base_type_ = std::move(base_type);
     }
 

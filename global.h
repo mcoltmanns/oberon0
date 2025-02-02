@@ -35,8 +35,4 @@ static string to_string(T *obj) {
     return stream.str();
 }
 
-// both doublewords, for simplicity's sake
-#define DATA_WIDTH 64 // how many bits in a value?
-#define ADDR_WIDTH 64 // how many bits in an address?
-
 #endif //OBERON_LLVM_GLOBAL_H

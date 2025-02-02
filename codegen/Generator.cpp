@@ -18,6 +18,7 @@
 #include "scoper/symbols/PassedParam.h"
 #include "scoper/symbols/Procedure.h"
 #include "scoper/symbols/Variable.h"
+#include "scoper/symbols/types/BaseTypes.h"
 #include "scoper/symbols/types/ConstructedTypes.h"
 
 // File is a little ugly! Rife with lots of repetition that could've probably been avoided had this been written with generics in mind
@@ -47,8 +48,14 @@ llvm::Module* Generator::generate_module(const Module *module_symbol, llvm::LLVM
 
     llvm::IRBuilder<> builder(context);
 
+    // initialize basic types with their llvm types
     BASIC_TYPE_INT->llvm_type = builder.getInt32Ty();
     BASIC_TYPE_BOOL->llvm_type = builder.getInt1Ty();
+
+    // initialize external functions with their llvm pointers
+    auto putch_sig = llvm::FunctionType::get(builder.getInt32Ty(), { builder.getInt32Ty() }, false);
+    auto putch_func = llvm::cast<llvm::Function>(module->getOrInsertFunction("putchar", putch_sig).getCallee()); // putchar, like printf, is available
+    EXT_PROCEDURE_PUTCHAR->llvm_function = putch_func;
 
     // process declarations
     for (const auto &symbol : module_symbol->scope_->table_) {
@@ -450,7 +457,7 @@ llvm::BasicBlock *Generator::generate_statement(const std::shared_ptr<Node> &sta
             // generate statements for default block
             if (else_block) {
                 branches.emplace_back(else_block, nullptr, nullptr);
-                for (const auto &stmt : statement->children().back()    ->children()) {
+                for (const auto &stmt : statement->children().back()->children()) {
                     builder.SetInsertPoint(else_block);
                     generate_statement(stmt, builder, scope, function);
                 }

@@ -11,7 +11,6 @@
 #include "symbols/Procedure.h"
 #include "symbols/PassedParam.h"
 #include "symbols/Variable.h"
-#include "symbols/types/BaseTypes.h"
 #include "symbols/types/ConstructedTypes.h"
 
 
@@ -19,9 +18,7 @@
 // you must provide the symbol you are expecting!
 template<>
 std::shared_ptr<Type> Scope::lookup_by_name(const std::string &name) {
-    if (name == "INTEGER") return BASIC_TYPE_INT;
-    if (name == "BOOLEAN") return BASIC_TYPE_BOOL;
-    for (auto entry : table_) {
+    for (const auto& entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Type>(entry);
     }
     if (outer_) return outer_->lookup_by_name<Type>(name);
@@ -29,7 +26,7 @@ std::shared_ptr<Type> Scope::lookup_by_name(const std::string &name) {
 }
 template<>
 std::shared_ptr<Constant> Scope::lookup_by_name(const std::string &name) {
-    for (auto entry : table_) {
+    for (const auto& entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Constant>(entry);
     }
     if (outer_) return outer_->lookup_by_name<Constant>(name);
@@ -37,7 +34,7 @@ std::shared_ptr<Constant> Scope::lookup_by_name(const std::string &name) {
 }
 template<>
 std::shared_ptr<Module> Scope::lookup_by_name(const std::string &name) {
-    for (auto entry : table_) {
+    for (const auto& entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Module>(entry);
     }
     if (outer_) return outer_->lookup_by_name<Module>(name);
@@ -45,7 +42,7 @@ std::shared_ptr<Module> Scope::lookup_by_name(const std::string &name) {
 }
 template<>
 std::shared_ptr<Procedure> Scope::lookup_by_name(const std::string &name) {
-    for (auto entry : table_) {
+    for (const auto& entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Procedure>(entry);
     }
     if (outer_) return outer_->lookup_by_name<Procedure>(name);
@@ -53,7 +50,7 @@ std::shared_ptr<Procedure> Scope::lookup_by_name(const std::string &name) {
 }
 template<>
 std::shared_ptr<PassedParam> Scope::lookup_by_name(const std::string &name) {
-    for (auto entry : table_) {
+    for (const auto& entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<PassedParam>(entry);
     }
     if (outer_) return outer_->lookup_by_name<PassedParam>(name);
@@ -61,9 +58,7 @@ std::shared_ptr<PassedParam> Scope::lookup_by_name(const std::string &name) {
 }
 template<>
 std::shared_ptr<Symbol> Scope::lookup_by_name(const std::string &name) {
-    if (name == "INTEGER") return BASIC_TYPE_INT;
-    if (name == "BOOLEAN") return BASIC_TYPE_BOOL;
-    for (auto entry : table_) {
+    for (const auto& entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Symbol>(entry);
     }
     if (outer_) return outer_->lookup_by_name<Symbol>(name);
@@ -71,7 +66,7 @@ std::shared_ptr<Symbol> Scope::lookup_by_name(const std::string &name) {
 }
 template<>
 std::shared_ptr<Variable> Scope::lookup_by_name(const std::string &name) {
-    for (auto entry : table_) {
+    for (const auto& entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<Variable>(entry);
     }
     if (outer_) return outer_->lookup_by_name<Variable>(name);
@@ -79,7 +74,7 @@ std::shared_ptr<Variable> Scope::lookup_by_name(const std::string &name) {
 }
 template<>
 std::shared_ptr<DerivedType> Scope::lookup_by_name(const std::string &name) {
-    for (auto entry : table_) {
+    for (const auto& entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<DerivedType>(entry);
     }
     if (outer_) return outer_->lookup_by_name<DerivedType>(name);
@@ -87,7 +82,7 @@ std::shared_ptr<DerivedType> Scope::lookup_by_name(const std::string &name) {
 }
 template<>
 std::shared_ptr<RecordType> Scope::lookup_by_name(const std::string &name) {
-    for (auto entry : table_) {
+    for (const auto& entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<RecordType>(entry);
     }
     if (outer_) return outer_->lookup_by_name<RecordType>(name);
@@ -95,7 +90,7 @@ std::shared_ptr<RecordType> Scope::lookup_by_name(const std::string &name) {
 }
 template<>
 std::shared_ptr<ArrayType> Scope::lookup_by_name(const std::string &name) {
-    for (auto entry : table_) {
+    for (const auto& entry : table_) {
         if (entry->name() == name) return std::dynamic_pointer_cast<ArrayType>(entry);
     }
     if (outer_) return outer_->lookup_by_name<ArrayType>(name);
@@ -134,10 +129,6 @@ void Scope::print(std::ostream &s, int tabs) {
     s << std::endl;
 }
 
-int Scope::get_next_offset() const {
-    return current_offset_;
-}
-
 // does not check typing
 // but does check duplicate symbol uses within current scope
 // symbols in outer scopes are simply obscured during lookup
@@ -148,15 +139,4 @@ void Scope::add(const std::shared_ptr<Symbol>& sym) {
         }
     }
     table_.push_back(sym);
-    sym->offset_ = current_offset_; // set the offset (second part of static coord)
-    current_offset_ += sym->size_;
 }
-
-int Scope::symtbl_size() const {
-    int size = 0;
-    for (const auto& entry : table_) {
-        size += entry->size_;
-    }
-    return size;
-}
-

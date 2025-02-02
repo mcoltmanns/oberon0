@@ -10,8 +10,7 @@
 // for now we assume all base types take up 1 cell in storage
 class IntegerType final : public Type {
 public:
-    explicit IntegerType() : Type("INTEGER", 1) {
-        kind_ = BASE_INT;
+    explicit IntegerType() : Type("INTEGER") {
     };
     virtual ~IntegerType() = default;
 
@@ -31,8 +30,7 @@ public:
 // 0 is false, nonzero is true
 class BooleanType final : public Type {
 public:
-    explicit BooleanType() : Type("BOOLEAN", 1) {
-        kind_ = BASE_BOOL;
+    explicit BooleanType() : Type("BOOLEAN") {
     };
     virtual ~BooleanType() = default;
 

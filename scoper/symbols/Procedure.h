@@ -5,7 +5,6 @@
 #ifndef PROCEDURE_H
 #define PROCEDURE_H
 
-#include <unordered_map>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
 
@@ -26,6 +25,9 @@ public:
     void print(std::ostream &s, int tabs) override;
 };
 
-
+// global external procedures - will be made available at linkage from c stdlib
+// these are static and should NEVER! be declared anywhere else!
+// TODO declared here but fully set up elsewhere. pretty awful and spaghetti
+inline auto EXT_PROCEDURE_PUTCHAR = std::make_shared<Procedure>("PutChar", FilePos("EXTERN", 0, 0, 0), nullptr, nullptr);
 
 #endif //PROCEDURE_H

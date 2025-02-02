@@ -13,6 +13,7 @@
 #include "symbols/Procedure.h"
 #include "symbols/PassedParam.h"
 #include "symbols/Variable.h"
+#include "symbols/types/BaseTypes.h"
 #include "symbols/types/ConstructedTypes.h"
 #include "typechecker/TypeChecker.h"
 
@@ -163,7 +164,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                         logger_.error(node->pos(), ss.str());
                         break;
                     }
-                    auto sym = ArrayType(name_node->name(), length, std::dynamic_pointer_cast<Type>(base_type), node->pos(), length * base_type->size_); // array size is its length * size of its base type
+                    auto sym = ArrayType(name_node->name(), length, std::dynamic_pointer_cast<Type>(base_type), node->pos()); // array size is its length * size of its base type
                     scope_->add(std::make_shared<ArrayType>(sym));
                     break;
                 }
@@ -171,7 +172,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                     // record type nodes have any number of record_field_list nodes
                     // record_field_lists consist of a series of identifiers and a type name - all identifiers should have that type name
                     // internally, records are an unordered_map of strings to type references
-                    auto sym = RecordType(name_node->name(), node->pos(), 0);
+                    auto sym = RecordType(name_node->name(), node->pos());
                     for (const auto& field_list_node : type_node->children()) {
                         auto field_type_node = dynamic_cast<IdentNode *>(field_list_node->children().back()->children().front().get());
                         auto field_type = scope_->lookup_by_name<Type>(field_type_node->name());
@@ -180,7 +181,6 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                             break;
                         }
                         for (const auto& ident_node : field_list_node->children().front()->children()) {
-                            sym.size_ += field_type->size_; // record size is just the sum of the sizes of its fields
                             sym.fields().push_back(std::pair(dynamic_cast<IdentNode *>(ident_node.get())->name(), field_type));
                         }
                     }
@@ -209,7 +209,7 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
                 break;
             }
             for(const auto& id : ident_list_node->children()) {
-                auto var_sym = Variable(dynamic_cast<IdentNode *>(id.get())->name(), var_type, id->pos(), var_type->size_);
+                auto var_sym = Variable(dynamic_cast<IdentNode *>(id.get())->name(), var_type, id->pos());
                 scope_->add(std::make_shared<Variable>(var_sym));
             }
             break;
@@ -278,7 +278,6 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
             // process declarations
             auto nv = Scoper(proc_scope, logger_); // operating in the procedure scope, so we need a new visitor
             for (const auto& dec : decs_node->children()) nv.visit(dec);
-            proc_sym.size_ += proc_scope->symtbl_size(); // add the size of the procedure's symbol table to the procedure size (AR size)
             // add procedure to scope (statements were added at proc_sym init)
             scope_->add(std::make_shared<Procedure>(proc_sym));
             // check typing in the statement sequence node (must be done after the scope is processed)
@@ -298,6 +297,17 @@ void Scoper::visit(const std::shared_ptr<Node>& node) {
             auto sseq_node = node->children().at(2); // find statement sequence
             auto mod_scope = std::make_shared<Scope>(logger_, scope_, ident_node->name()); // initialize module scope
             auto nv = Scoper(mod_scope, logger_); // init visitor to build module scope
+
+            // add default types and external functions to scope
+            scope_->add(BASIC_TYPE_INT);
+            scope_->add(BASIC_TYPE_BOOL);
+
+            // external functions need a little extra initialization
+            scope_->add(EXT_PROCEDURE_PUTCHAR);
+            EXT_PROCEDURE_PUTCHAR->scope_ = std::make_shared<Scope>(logger_, mod_scope, EXT_PROCEDURE_PUTCHAR->name());
+            EXT_PROCEDURE_PUTCHAR->scope_->add(std::make_shared<PassedParam>("c", 0, BASIC_TYPE_INT, false, FilePos("EXTERN", 0, 0, 0), EXT_PROCEDURE_PUTCHAR.get()));
+            EXT_PROCEDURE_PUTCHAR->params_.emplace_back("c", BASIC_TYPE_INT->name());
+
             for (const auto& dec : decs_node->children())
                 nv.visit(dec); // add declarations to module scope
             auto mod_sym = std::make_shared<Module>(ident_node->name(), ident_node->pos(), sseq_node, mod_scope); // init module symbol
