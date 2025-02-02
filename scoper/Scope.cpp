@@ -148,15 +148,4 @@ void Scope::add(const std::shared_ptr<Symbol>& sym) {
         }
     }
     table_.push_back(sym);
-    sym->offset_ = current_offset_; // set the offset (second part of static coord)
-    current_offset_ += sym->size_;
 }
-
-int Scope::symtbl_size() const {
-    int size = 0;
-    for (const auto& entry : table_) {
-        size += entry->size_;
-    }
-    return size;
-}
-

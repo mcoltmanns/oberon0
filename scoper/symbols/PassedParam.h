@@ -10,8 +10,6 @@
 #include "Symbol.h"
 #include "types/Type.h"
 
-#define REF_SIZE 1
-
 class PassedParam final : public Symbol {
 private:
     int index_;
@@ -20,8 +18,7 @@ private:
     Procedure* procedure_;
 
 public:
-    PassedParam(std::string name, int index,std::shared_ptr<Type> type, const bool is_reference, FilePos pos, Procedure* procedure) : Symbol(std::move(name), std::move(pos), REF_SIZE), index_(index), type_(std::move(type)), is_reference_(is_reference), procedure_(procedure) {
-        kind_ = SymbolKind::PASSED_PARAM;
+    PassedParam(std::string name, int index,std::shared_ptr<Type> type, const bool is_reference, FilePos pos, Procedure* procedure) : Symbol(std::move(name), std::move(pos)), index_(index), type_(std::move(type)), is_reference_(is_reference), procedure_(procedure) {
     }
 
     std::shared_ptr<Type> type() { return type_; }

@@ -9,8 +9,7 @@
 #include "Constant.h"
 #include "Procedure.h"
 
-Module::Module(std::string name, const FilePos &pos, std::shared_ptr<Node> sseq_node, std::shared_ptr<Scope> module_scope) : Symbol(std::move(name), pos, 1), sseq_node(std::move(sseq_node)), scope_(std::move(module_scope)) {
-    kind_ = SymbolKind::MODULE;
+Module::Module(std::string name, const FilePos &pos, std::shared_ptr<Node> sseq_node, std::shared_ptr<Scope> module_scope) : Symbol(std::move(name), pos), sseq_node(std::move(sseq_node)), scope_(std::move(module_scope)) {
 }
 
 void Module::print(std::ostream &s, const int tabs) {
