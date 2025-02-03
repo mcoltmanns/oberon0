@@ -7,7 +7,7 @@ classified as imperative, structured, modular, and object-oriented.
 
 ## About
 
-This project is an implementation of an Oberon-0 compiler in C++ for the [LLVM](http://llvm.org) backend. It strives to implement the language as defined in Wirth's book ["Compiler Construction"](http://www.ethoberon.ethz.ch/WirthPubl/CBEAll.pdf) (Chapter 6, pp. 30-32). It was initially developed as the programming project that accompanies the M.Sc course "Compiler Construction" at the [University of Konstanz](https://uni.kn), as taught by Prof. Dr. Michael Grossniklaus.
+This project is an implementation of an Oberon-0 compiler in C++ for the [LLVM](http://llvm.org) backend. It strives to implement the language as defined in Wirth's book ["Compiler Construction"](http://www.ethoberon.ethz.ch/WirthPubl/CBEAll.pdf) (Chapter 6, pp. 30-32). It was initially developed as the programming project that accompanies the M.Sc course "Compiler Construction" at the [University of Konstanz](https://uni.kn), as taught by [Prof. Dr. Michael Grossniklaus] (https://dbis.uni-konstanz.de/people/people/grossniklaus/).
 
 ## Compatibility
 
