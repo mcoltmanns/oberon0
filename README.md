@@ -7,14 +7,7 @@ classified as imperative, structured, modular, and object-oriented.
 
 ## About
 
-This project provides the skeleton of a compiler for the Oberon-0 programming language, a subset of the full Oberon
-programming language, as described in Niklaus Wirth's book
-["Compiler Construction"](http://www.ethoberon.ethz.ch/WirthPubl/CBEAll.pdf) (Chapter 6, pp. 30-32). The skeleton is
-written in C++ and serves as the starting point of the programming project that accompanies the M.Sc. course "Compiler
-Construction" at the [University of Konstanz](https://uni.kn). The goal of this project is for students to design and
-develop a parser and intermediate representation for the Oberon-0 programming language. In order to generate executable
-code, they will transform their high-level intermediate representation into the low-level intermediate representation of
-the [LLVM](http://llvm.org) Compiler Infrastructure.
+This project is an implementation of an Oberon-0 compiler in C++ for the [LLVM](http://llvm.org) backend. It strives to implement the language as defined in Wirth's book ["Compiler Construction"](http://www.ethoberon.ethz.ch/WirthPubl/CBEAll.pdf) (Chapter 6, pp. 30-32). It was initially developed as the programming project that accompanies the M.Sc course "Compiler Construction" at the [University of Konstanz](https://uni.kn), as taught by Prof. Dr. Michael Grossniklaus.
 
 ## Compatibility
 
