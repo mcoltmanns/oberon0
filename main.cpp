@@ -52,13 +52,13 @@ int main(const int argc, const char *argv[]) {
     Parser parser{scanner, logger};
     auto module_node = parser.parse(); // get an ast
     if (logger.getErrorCount() == 0) {
-        module_node->print(cout);
+        //module_node->print(cout);
         auto module_name = std::dynamic_pointer_cast<IdentNode>(module_node->children().at(0))->name();
         auto outer_scope = std::make_shared<Scope>(logger, "EXTERN"); // declare outer scope - this is also where basic types and external procedures go
         Scoper scoper = Scoper(outer_scope, logger); // get a scoper
         scoper.visit(module_node); // build the scope
         if (logger.getErrorCount() == 0) {
-            outer_scope->print(cout);
+            //outer_scope->print(cout);
             auto module_symbol = outer_scope->lookup_by_name<Module>(module_name);
             auto tm = LLVMMachine();
             auto gen = Generator();
