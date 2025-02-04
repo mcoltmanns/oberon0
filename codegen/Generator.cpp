@@ -489,9 +489,14 @@ llvm::BasicBlock *Generator::generate_statement(const std::shared_ptr<Node> &sta
         case NodeType::while_statement: {
             // whiles are a condition followed by a statement sequence
             // 3 blocks seems like too many but for the life of me i could not get it with 2
+            auto start = builder.GetInsertBlock();
             auto cond_block = llvm::BasicBlock::Create(builder.getContext(), "cond", function);
             auto while_block = llvm::BasicBlock::Create(builder.getContext(), "while", function);
             auto after_block = llvm::BasicBlock::Create(builder.getContext(), "elihw", function);
+
+            // have to branch here otherwise preceding basic block will be malformed
+            builder.SetInsertPoint(start);
+            builder.CreateBr(cond_block);
 
             builder.SetInsertPoint(cond_block);
             auto cond = evaluate_expression(statement->children().front(), builder, scope);
@@ -503,6 +508,8 @@ llvm::BasicBlock *Generator::generate_statement(const std::shared_ptr<Node> &sta
                 builder.SetInsertPoint(place);
             }
             builder.CreateBr(cond_block);
+
+            builder.SetInsertPoint(after_block);
 
             return after_block;
         }
