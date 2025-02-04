@@ -3,43 +3,18 @@ MODULE Sort0;
 
 (* Length of the array to be sorted. *)
 CONST Dim = 10;
-AnotherConstant = -2 + 3;
+lf = 10;
+cr = 13;
 
 (* Array type *)
-TYPE TESTRECORD = RECORD foo, bar : INTEGER END;
-INTARRAY = ARRAY Dim OF INTEGER;
-STRUCTARRAY = ARRAY Dim OF TESTRECORD;
+TYPE INTARRAY = ARRAY Dim OF INTEGER;
 
 (* Array to be sorted. *)
 VAR a: INTARRAY;
-b: STRUCTARRAY;
 c: INTEGER;
-d: INTEGER;
-
-rec: TESTRECORD;
-
-bool: BOOLEAN;
-
-PROCEDURE Test(VAR a, b: INTEGER; VAR e: INTARRAY);
-CONST d = 5;
-VAR c: INTEGER;
-f: INTARRAY;
-BEGIN
-    IF 0 = 1 THEN
-        a := 1
-    ELSIF 2 = 2 THEN
-        b := 2
-    ELSIF 3 = 4 THEN
-        b := 5
-    ELSE
-        a := 3
-    END;
-    a := 4
-END Test;
 
 (* Initializes the array. *)
 PROCEDURE Init();
-TYPE INTARRAYTWO = ARRAY Dim + 1 OF INTEGER;
 VAR i: INTEGER;
 BEGIN
     i := 0;
@@ -48,6 +23,28 @@ BEGIN
         i := i + 1
     END
 END Init;
+
+(* Convert integers from 0-9 to their ascii code
+Sets out to null char if a is out of range*)
+PROCEDURE IntToCharCode(a: INTEGER; VAR out: INTEGER);
+BEGIN
+    IF (a < 0) OR (a > 9) THEN out := 0;
+    ELSE out := a + 48 END
+END IntToCharCode;
+
+(* Prints the array *)
+PROCEDURE PrintArray();
+VAR i: INTEGER;
+BEGIN
+    i := 0;
+    WHILE i < Dim DO
+        IntToCharCode(a[i], c);
+        PutChar(c);
+        i := i + 1
+    END;
+    PutChar(cr);
+    PutChar(lf)
+END PrintArray;
 
 (* Swaps the two values passed as var-parameters. *)
 PROCEDURE Swap(VAR a, b: INTEGER);
@@ -134,7 +131,16 @@ END QuickSort;
 
 (* Main program. *)
 BEGIN
-    Swap(c, d);
     Init;
+    PrintArray();
     QuickSort;
+    PrintArray();
+    Init;
+    PrintArray();
+    BubbleSort;
+    PrintArray();
+    Init;
+    PrintArray();
+    InsertionSort;
+    PrintArray();
 END Sort0.

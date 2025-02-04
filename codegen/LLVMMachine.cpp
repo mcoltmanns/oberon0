@@ -70,11 +70,14 @@ void LLVMMachine::emit(llvm::Module *llvm_module, const std::string &name, Outpu
     llvm::CodeGenFileType ft;
     switch (type) {
         case OutputFileType::AssemblyFile:
+            std::cerr << "Assembly files are currently unsupported" << std::endl;
+/*
 #ifdef _LLVM_18
             ft = llvm::CodeGenFileType::AssemblyFile;
 #else
             ft = llvm::CodeGenFileType::CGFT_AssemblyFile;
 #endif
+*/
             break;
         default:
 #ifdef _LLVM_18

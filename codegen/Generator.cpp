@@ -84,9 +84,9 @@ llvm::Module* Generator::generate_module(const Module *module_symbol, llvm::LLVM
     }
 
     // entry basic block
-    auto main = module->getOrInsertFunction("main", builder.getVoidTy());
+    auto main = module->getOrInsertFunction("main", builder.getInt32Ty());
     auto function = llvm::cast<llvm::Function>(main.getCallee());
-    auto entry = llvm::BasicBlock::Create(context, "entry", function);
+    auto entry = llvm::BasicBlock::Create(context, "main", function);
     builder.SetInsertPoint(entry);
 
     // main statements
@@ -95,7 +95,9 @@ llvm::Module* Generator::generate_module(const Module *module_symbol, llvm::LLVM
         builder.SetInsertPoint(last_spot);
     }
 
-    builder.CreateRetVoid();
+    builder.CreateRet(builder.getInt32(0));
+
+    llvm::verifyModule(*module);
 
     return module;
 }
@@ -148,7 +150,8 @@ llvm::LoadInst* Generator::load_local_variable(const std::shared_ptr<Variable> &
 llvm::Value* Generator::load_local_variable(const std::shared_ptr<PassedParam> &passed_param, llvm::IRBuilder<> &builder) {
     auto func = builder.GetInsertBlock()->getParent(); // what function are we working in?
     auto param = func->arg_begin() + passed_param->index(); // find the parameter
-    return builder.CreateLoad(passed_param->type()->llvm_type, param, passed_param->name());
+    if (passed_param->is_reference()) return builder.CreateLoad(passed_param->type()->llvm_type, param, passed_param->name()); // if the parameter was a reference, load the value at its pointer
+    return param; // otherwise just return the parameter
 }
 
 // should be followed by a call to a load or store instruction - this returns a pointer
@@ -389,7 +392,26 @@ llvm::BasicBlock *Generator::generate_statement(const std::shared_ptr<Node> &sta
                     // TODO: this should be enforced by the typechecker!
                     auto param_ident = std::dynamic_pointer_cast<IdentNode>(statement->children().at(i));
                     auto passed_in = scope.lookup_by_name<Symbol>(param_ident->name());
-                    args.push_back(passed_in->llvm_ptr); // just pass the thing's pointer
+                    llvm::Value *ptr = nullptr;
+
+                    if (auto passed_var = scope.lookup_by_name<Variable>(param_ident->name()); passed_var) {
+                        if (param_ident->selector_block()) {
+                            ptr = get_ptr_from_index(passed_var, param_ident->selector_block(), scope, builder).first;
+                        }
+                        else {
+                            ptr = passed_var->llvm_ptr;
+                        }
+                    }
+                    else if (auto passed_param = scope.lookup_by_name<PassedParam>(param_ident->name())) {
+                        if (param_ident->selector_block()) {
+                            ptr = get_ptr_from_index(passed_param, param_ident->selector_block(), scope, builder).first;
+                        }
+                        else {
+                            ptr = passed_param->llvm_ptr;
+                        }
+                    }
+
+                    args.push_back(ptr); // just pass the thing's pointer
                 }
                 else {
                     // if the thing isn't a reference, evaluate then pass
@@ -457,10 +479,12 @@ llvm::BasicBlock *Generator::generate_statement(const std::shared_ptr<Node> &sta
             // generate statements for default block
             if (else_block) {
                 branches.emplace_back(else_block, nullptr, nullptr);
-                for (const auto &stmt : statement->children().back()->children()) {
+                for (const auto &stmt : statement->children().back()->children().front()->children()) {
                     builder.SetInsertPoint(else_block);
                     generate_statement(stmt, builder, scope, function);
                 }
+                builder.SetInsertPoint(else_block); // also need this branch for well-formed blocks
+                builder.CreateBr(end_block);
             }
 
             branches.emplace_back(end_block, nullptr, nullptr);
@@ -478,13 +502,6 @@ llvm::BasicBlock *Generator::generate_statement(const std::shared_ptr<Node> &sta
             // leave things at the end block and return it
             builder.SetInsertPoint(end_block);
             return end_block;
-        }
-        case NodeType::if_default: {
-            // default if cases are just wrappers for statement sequences
-            for (const auto &st : statement->children().front()->children()) {
-                generate_statement(st, builder, scope, function);
-            }
-            return builder.GetInsertBlock();
         }
         case NodeType::while_statement: {
             // whiles are a condition followed by a statement sequence

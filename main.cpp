@@ -26,11 +26,26 @@ using std::endl;
 using std::string;
 
 int main(const int argc, const char *argv[]) {
-    if (argc != 2) {
-        cerr << "Usage: oberon0c <filename>" << endl;
+    if (argc > 3 || argc < 2) {
+        cerr << "Usage: oberon0c <filename> <output file type>\n\tOutput file type may be: \n\t\t- \"llvm\" or \"ll\" for LLVM IR output\n\t\t- \"obj\" or \"o\" or blank for c object file output" << endl;
         exit(1);
     }
     path filename = argv[1];
+
+    OutputFileType out_type = OutputFileType::ObjectFile;
+    if (argc == 3) {
+        if (string(argv[2]) == "ll" || string(argv[2]) == "llvm") {
+            out_type = OutputFileType::LLVMIRFile;
+        }
+        else if (string(argv[2]) == "obj" || string(argv[2]) == "o") {
+            out_type = OutputFileType::ObjectFile;
+        }
+        else {
+            std::cerr << "Error: Unknown output file type: " << argv[2] << endl;
+            exit(1);
+        }
+    }
+
     Logger logger;
     logger.setLevel(LogLevel::DEBUG);
     Scanner scanner(filename, logger);
@@ -50,7 +65,7 @@ int main(const int argc, const char *argv[]) {
             auto ctx = llvm::LLVMContext();
             auto code = gen.generate_module(module_symbol.get(), ctx, tm.TM->createDataLayout(), tm.TM->getTargetTriple());
             if (logger.getErrorCount() != 0) goto print_status;
-            tm.emit(code, module_symbol->name(), OutputFileType::LLVMIRFile);
+            tm.emit(code, module_symbol->name(), out_type);
         }
     }
 
