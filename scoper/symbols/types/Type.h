@@ -11,6 +11,8 @@
 
 class Type : public Symbol {
 public:
+    llvm::Type *llvm_type = nullptr; // once we start generating, this holds the pointer to the llvm type this represents
+
     Type(const std::string &name, const FilePos &pos) : Symbol(name, pos) {
     }
     explicit Type(const std::string &name);

@@ -29,7 +29,7 @@ private:
     std::shared_ptr<Type> base_type_;
 
 public:
-    ArrayType(std::string name, int length, std::shared_ptr<Type> base_type, FilePos pos) : Type(name, pos), length_(length), base_type_(std::move(base_type)) {
+    ArrayType(const std::string& name, const int length, std::shared_ptr<Type> base_type, const FilePos &pos) : Type(name, pos), length_(length), base_type_(std::move(base_type)) {
     }
 
     ~ArrayType() override;
@@ -45,13 +45,13 @@ private:
     std::shared_ptr<Type> base_type_;
 
 public:
-    DerivedType(std::string name, const std::shared_ptr<Type> &base_type, FilePos pos) : Type(std::move(name), std::move(pos)) {
-        base_type_ = std::move(base_type);
+    DerivedType(const std::string& name, const std::shared_ptr<Type> &base_type, const FilePos& pos) : Type(name, pos) {
+        base_type_ = base_type;
     }
 
     ~DerivedType() override;
 
-    std::shared_ptr<Type> base_type() const { return base_type_; }
+    [[nodiscard]] std::shared_ptr<Type> base_type() const { return base_type_; }
 };
 
 #endif //CONSTRUCTEDTYPES_H

@@ -112,6 +112,8 @@ if (LLVM_FOUND)
         message(STATUS "Warning: found legacy LLVM: ${LLVM_VERSION}")
         add_definitions(-D_LLVM_LEGACY)
     else ()
+        # on some systems (void linux) this requires dev files for all kinds of wonky stuff
+        # off the top of my head - curses, zlib. your mileage may vary
         message(STATUS "Found LLVM: ${LLVM_VERSION}")
         if (${LLVM_VERSION} MATCHES "16.*.*")
             add_definitions(-D_LLVM_16)

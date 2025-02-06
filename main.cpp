@@ -8,16 +8,12 @@
 #include <string>
 
 #include "codegen/Generator.h"
-#include "codegen/Generator.h"
 #include "codegen/LLVMMachine.h"
 #include "parser/Parser.h"
 #include "scanner/Scanner.h"
 #include "scoper/Scoper.h"
-#include "scoper/symbols/Constant.h"
 #include "scoper/symbols/Module.h"
 #include "scoper/symbols/Procedure.h"
-#include "scoper/symbols/Variable.h"
-#include "scoper/symbols/types/ConstructedTypes.h"
 #include "typechecker/TypeChecker.h"
 
 using std::cerr;
@@ -27,18 +23,18 @@ using std::string;
 
 int main(const int argc, const char *argv[]) {
     if (argc > 3 || argc < 2) {
-        cerr << "Usage: oberon0c <filename> <output file type>\n\tOutput file type may be: \n\t\t- \"llvm\" or \"ll\" for LLVM IR output\n\t\t- \"obj\" or \"o\" or blank for c object file output" << endl;
+        cerr << "Usage: oberon0c <filename> <output file type>\n\tOutput file type may be: \n\t\t- \"llvm\" or \"ll\" for LLVM IR output (default)\n\t\t- \"obj\" or \"o\" for object file output" << endl;
         exit(1);
     }
     path filename = argv[1];
 
-    OutputFileType out_type = OutputFileType::ObjectFile;
+    OutputFileType out_type = OutputFileType::LLVMIRFile;
     if (argc == 3) {
         if (string(argv[2]) == "ll" || string(argv[2]) == "llvm") {
             out_type = OutputFileType::LLVMIRFile;
         }
         else if (string(argv[2]) == "obj" || string(argv[2]) == "o") {
-            out_type = OutputFileType::ObjectFile;
+            out_type = OutputFileType::ObjectFile; // your mileage may vary with obj files. most consistent thing seems to be to compile to llvm IR and then compile that with clang
         }
         else {
             std::cerr << "Error: Unknown output file type: " << argv[2] << endl;
@@ -54,7 +50,7 @@ int main(const int argc, const char *argv[]) {
     if (logger.getErrorCount() == 0) {
         //module_node->print(cout);
         auto module_name = std::dynamic_pointer_cast<IdentNode>(module_node->children().at(0))->name();
-        auto outer_scope = std::make_shared<Scope>(logger, "EXTERN"); // declare outer scope - this is also where basic types and external procedures go
+        auto outer_scope = std::make_shared<Scope>(logger, "EXTERN"); // declare outer scope
         Scoper scoper = Scoper(outer_scope, logger); // get a scoper
         scoper.visit(module_node); // build the scope
         if (logger.getErrorCount() == 0) {

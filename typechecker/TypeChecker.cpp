@@ -171,11 +171,26 @@ void TypeChecker::visit(const std::shared_ptr<Node> &node) {
                     logger_.error(child->pos(), "Too many parameters in procedure call");
                     break;
                 }
-                auto passed_type = get_type(child); // type of the argument being passed
-                auto receiving_type_name = proc_sym->params_.at(param_no).second;
-                auto receiving_type = scope_->lookup_by_name<Type>(proc_sym->params_.at(param_no).second);
-                if (receiving_type && passed_type && passed_type->name() != receiving_type->name()) {
-                    logger_.error(child->pos(), "Parameter type mismatch in procedure call (passed \"" + passed_type->name() + "\" but expected \"" + receiving_type->name() + "\")");
+                auto passed_thing_type = get_type(child);
+                auto receiving_param = std::dynamic_pointer_cast<PassedParam>(proc_sym->scope_->lookup_by_index(static_cast<int>(param_no)));
+                // make sure types are same
+                if (passed_thing_type && receiving_param->type() && receiving_param->type()->name() != passed_thing_type->name()) {
+                    logger_.error(child->pos(), "Parameter type mismatch in procedure call (passed \"" + passed_thing_type->name() + "\" but expected \"" + receiving_param->type()->name() + "\")");
+                } // ast guarantees that only expressions, variables and constants can be passed
+                // so if the receiving parameter is a reference, we just have to make sure the thing we're passing is a variable (expressions and constants cannot be referenced)
+                if (receiving_param->is_reference()) {
+                    // first off: if the thing being passed isn't an identifier, it cannot be referenced (must be a raw expression like 2+2)
+                    auto passed_thing_ident = std::dynamic_pointer_cast<IdentNode>(child);
+                    if (passed_thing_ident) {
+                        // if the thing is an identifier, it can't be a constant
+                        auto passed_constant = scope_->lookup_by_name<Constant>(passed_thing_ident->name());
+                        if (passed_constant) {
+                            logger_.error(child->pos(), "Cannot pass constant value as reference");
+                        }
+                    }
+                    else {
+                        logger_.error(child->pos(), "Cannot reference non-referencable value");
+                    }
                 }
                 param_no++;
             }

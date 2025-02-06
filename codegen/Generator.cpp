@@ -104,13 +104,13 @@ llvm::Module* Generator::generate_module(const Module *module_symbol, llvm::LLVM
 
 llvm::GlobalVariable* Generator::declare_const(const std::shared_ptr<Constant> &constant) {
     auto* llvm_const = new llvm::GlobalVariable(BASIC_TYPE_INT->llvm_type, true, llvm::GlobalVariable::InternalLinkage, llvm::Constant::getIntegerValue(BASIC_TYPE_INT->llvm_type, constant->toAPInt(BASIC_TYPE_INT->llvm_type->getIntegerBitWidth())), constant->name());
-    constant->llvm_ptr = llvm_const;
+    constant->set_llvm_ptr(llvm_const);
     return llvm_const;
 }
 
 llvm::GlobalVariable* Generator::declare_global_variable(const std::shared_ptr<Variable> &variable) {
     auto* llvm_var = new llvm::GlobalVariable(variable->type()->llvm_type, false, llvm::GlobalVariable::InternalLinkage, llvm::Constant::getNullValue(variable->type()->llvm_type), variable->name());
-    variable->llvm_ptr = llvm_var;
+    variable->set_llvm_ptr(llvm_var);
     return llvm_var;
 }
 
@@ -137,12 +137,12 @@ llvm::ArrayType* Generator::declare_array_type(const std::shared_ptr<ArrayType> 
 
 llvm::AllocaInst* Generator::allocate_local_variable(const std::shared_ptr<Variable> &variable, llvm::IRBuilder<> &builder) {
     llvm::AllocaInst* alloc_place = builder.CreateAlloca(variable->type()->llvm_type, nullptr, variable->name());
-    variable->llvm_ptr = alloc_place;
+    variable->set_llvm_ptr(alloc_place);
     return alloc_place;
 }
 
 llvm::LoadInst* Generator::load_local_variable(const std::shared_ptr<Variable> &variable, llvm::IRBuilder<> &builder) {
-    llvm::LoadInst* load_place = builder.CreateLoad(variable->type()->llvm_type, variable->llvm_ptr, variable->name());
+    llvm::LoadInst* load_place = builder.CreateLoad(variable->type()->llvm_type, variable->llvm_ptr(), variable->name());
     return load_place;
 }
 
@@ -156,7 +156,7 @@ llvm::Value* Generator::load_local_variable(const std::shared_ptr<PassedParam> &
 
 // should be followed by a call to a load or store instruction - this returns a pointer
 std::pair<llvm::Value *, llvm::Type *> Generator::get_ptr_from_index(const std::shared_ptr<Variable> &variable, const std::shared_ptr<Node> &selector_block, Scope &scope, llvm::IRBuilder<> &builder) {
-    llvm::Value *most_recent_load = variable->llvm_ptr;
+    llvm::Value *most_recent_load = variable->llvm_ptr();
     llvm::Value *index = nullptr;
     llvm::Type *end_ptr_type = nullptr;
     for (const std::shared_ptr<Node> &selector : selector_block->children()) {
@@ -203,7 +203,7 @@ std::pair<llvm::Value *, llvm::Type *> Generator::get_ptr_from_index(
 }
 
 llvm::StoreInst* Generator::store_val_to_variable(llvm::Value* val, const std::shared_ptr<Variable> &variable, llvm::IRBuilder<> &builder) {
-    llvm::StoreInst* store_place = builder.CreateStore(val, variable->llvm_ptr);
+    llvm::StoreInst* store_place = builder.CreateStore(val, variable->llvm_ptr());
     return store_place;
 }
 
@@ -386,10 +386,10 @@ llvm::BasicBlock *Generator::generate_statement(const std::shared_ptr<Node> &sta
 
             std::vector<llvm::Value*> args;
             for (uint64_t i = 1; i < statement->children().size(); i++) {
-                auto passed_to = std::dynamic_pointer_cast<PassedParam>(proc->scope_->lookup_by_index(i - 1));
+                auto passed_to = std::dynamic_pointer_cast<PassedParam>(proc->scope_->lookup_by_index(static_cast<int>(i) - 1));
                 if (passed_to->is_reference()) {
                     // if we are passing into a reference, the things we're passing must be declared values, and they can't be constants
-                    // TODO: this should be enforced by the typechecker!
+                    // this was enforced in the typechecker, so perfectly safe to assume here
                     auto param_ident = std::dynamic_pointer_cast<IdentNode>(statement->children().at(i));
                     auto passed_in = scope.lookup_by_name<Symbol>(param_ident->name());
                     llvm::Value *ptr = nullptr;
@@ -399,7 +399,7 @@ llvm::BasicBlock *Generator::generate_statement(const std::shared_ptr<Node> &sta
                             ptr = get_ptr_from_index(passed_var, param_ident->selector_block(), scope, builder).first;
                         }
                         else {
-                            ptr = passed_var->llvm_ptr;
+                            ptr = passed_var->llvm_ptr();
                         }
                     }
                     else if (auto passed_param = scope.lookup_by_name<PassedParam>(param_ident->name())) {
@@ -407,7 +407,7 @@ llvm::BasicBlock *Generator::generate_statement(const std::shared_ptr<Node> &sta
                             ptr = get_ptr_from_index(passed_param, param_ident->selector_block(), scope, builder).first;
                         }
                         else {
-                            ptr = passed_param->llvm_ptr;
+                            ptr = passed_param->llvm_ptr();
                         }
                     }
 

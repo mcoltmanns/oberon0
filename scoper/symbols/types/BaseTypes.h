@@ -12,7 +12,8 @@ class IntegerType final : public Type {
 public:
     explicit IntegerType() : Type("INTEGER") {
     };
-    virtual ~IntegerType() = default;
+
+    ~IntegerType() override = default;
 
     void print(std::ostream &s, int tabs) override;
 };
@@ -25,14 +26,12 @@ public:
     void print(std::ostream &s, int tabs) override;
 };*/
 
-// booleans are sort of half-implemented right now. they can be declared, but internally I'm just handling everything as an integer. so you can assign ints to bools and v.v
-// you can also do logic ops on ints and math ops on bools
 // 0 is false, nonzero is true
 class BooleanType final : public Type {
 public:
     explicit BooleanType() : Type("BOOLEAN") {
     };
-    virtual ~BooleanType() = default;
+    ~BooleanType() override = default;
 
     void print(std::ostream &s, int tabs) override;
 };
