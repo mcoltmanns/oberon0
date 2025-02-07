@@ -145,3 +145,23 @@ In order to build the compiler for the Oberon-0 programming language using CMake
 
 Once the build successfully terminates, the executable of the compiler for the Oberon-0 programming language can be 
 found in the `build` directory. 
+
+### Use
+Currently, compilation to LLVM IR and object files is supported.
+
+To compile a program to LLVM IR:
+```
+> oberon0c Program.Mod ll
+```
+
+To compile a program to an object file:
+```
+> oberon0c Program.Mod o
+```
+
+On some linux platforms, compilation to an object file causes problems with position-independent code. To circumvent this bug,
+it is recommended to first compile to LLVM IR and then use clang to produce the final executable:
+```
+> oberon0c Program.Mod ll
+> clang -fPIE Program.ll
+```
