@@ -30,6 +30,8 @@
 # CMake
 /cmake-build-debug/
 /CMakeFiles/
+/cmake-build-debug-clang/
+/cmake-build-debug-gcc/
 build
 
 # Visual Studio
