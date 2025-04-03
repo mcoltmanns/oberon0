@@ -80,11 +80,11 @@ order to install Boost and LLVM.
  
 ## Cloning the Project
 
-In order to clone the repository from GitLab, use the following command.
+In order to clone the repository, use the following command.
 ```
-> git clone https://gitlab.inf.uni-konstanz.de/dbis/education/oberon0c.git
+> git clone https://github.com/mcoltmanns/oberon0.git
 ```
-This will create a new directory `oberon0c` in the current directory. This new directory is referred to as the *root 
+This will create a new directory `oberon0` in the current directory. This new directory is referred to as the *root 
 directory* of the project.  
 
 ## Building the Project
@@ -127,7 +127,7 @@ Once the build successfully terminates, the `oberon0c.exe` executable can be fou
 
 In order to build the compiler for the Oberon-0 programming language using CMake, follow the steps below.
 
-1. On the command line, navigate to the root directory of the project, e.g., `oberon0c`. The root directory of the 
+1. On the command line, navigate to the root directory of the project, e.g., `oberon0`. The root directory of the 
    project is the directory that was created when you cloned the GitLab repository.
 2. Create a build directory.
    ```
