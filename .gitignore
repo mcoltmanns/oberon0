@@ -50,3 +50,6 @@ build
 
 # macOS
 *.DS_Store
+
+# scratch files
+scratch
