@@ -106,6 +106,15 @@ if (Boost_FOUND)
     target_link_libraries(${OBERON0_C} PRIVATE Boost::headers Boost::program_options)
 endif ()
 
+# here we do a little magic for finding llvm if it's installed on a nonstandard path
+find_program(LLVM_CONFIG llvm-config)
+if (LLVM_CONFIG)
+    execute_process(
+        COMMAND ${LLVM_CONFIG} --cmakedir
+        OUTPUT_VARIABLE LLVM_DIR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+endif()
 find_package(LLVM REQUIRED CONFIG)
 if (LLVM_FOUND)
     if (${LLVM_VERSION} LESS 16.0.0)
@@ -113,7 +122,7 @@ if (LLVM_FOUND)
         add_definitions(-D_LLVM_LEGACY)
     else ()
         # on some systems (void linux) this requires dev files for all kinds of wonky stuff
-        # off the top of my head - curses, zlib. your mileage may vary
+        # off the top of my head - curses, zlib. YMMV
         message(STATUS "Found LLVM: ${LLVM_VERSION}")
         if (${LLVM_VERSION} MATCHES "16.*.*")
             add_definitions(-D_LLVM_16)
