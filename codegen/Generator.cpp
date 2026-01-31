@@ -4,6 +4,7 @@
 
 #include "Generator.h"
 
+#include <stack>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/IRBuilder.h>
@@ -44,7 +45,11 @@ void Generator::align_global(llvm::GlobalVariable *global, llvm::DataLayout *lay
 llvm::Module* Generator::generate_module(const Module *module_symbol, llvm::LLVMContext &context, const llvm::DataLayout& data_layout, const llvm::Triple& triple) {
     auto module = new llvm::Module(module_symbol->name(), context);
     module->setDataLayout(data_layout);
+#if defined(_LLVM_21)
+    module->setTargetTriple(triple);
+#else
     module->setTargetTriple(triple.getTriple());
+#endif
 
     llvm::IRBuilder<> builder(context);
 
