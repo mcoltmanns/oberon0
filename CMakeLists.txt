@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.29.6)
 set(OBERON0_C "oberon0c")
 project(${OBERON0_C} VERSION 0.0.1)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     # warning level 4
     add_compile_options(/Wall /W4 /external:anglebrackets /external:W0)
