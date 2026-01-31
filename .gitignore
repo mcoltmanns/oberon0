@@ -33,6 +33,8 @@
 /cmake-build-debug-clang/
 /cmake-build-debug-gcc/
 build
+compile_commands.json
+.ccls-cache/
 
 # Visual Studio
 /.vs/
