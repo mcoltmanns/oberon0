@@ -12,16 +12,16 @@ This project is an implementation of an Oberon-0 compiler in C++ for the [LLVM](
 ## Compatibility
 
 The provided C++ sourcecode can be compiled on different operating systems and with different toolchains. Currently, the
-sourcecode only depends on [Boost](https://www.boost.org) and [LLVM](https://llvm.org). As of March 2022, the 
+sourcecode only depends on [Boost](https://www.boost.org) and [LLVM](https://llvm.org). As of January 2026, the 
 following configurations are tested and known to work.
 
-|       | macOS              | Windows              | Linux (Ubuntu) |
-|-------|--------------------|----------------------|----------------|
-| Boost | 1.74.0             | 1.74.0               | 1.74.0         |
-| LLVM  | 13.0.0             | 13.0.0               | 13.0.0         |
-| CMake | 3.21.1             | 3.19.2               | 3.22.2         |
-| IDE   | CLion 2021.3.3     | Visual Studio 17.1.0 | CLion 2021.3.3 |
-| CXX   | Apple Clang 13.0.0 | CL 19.31.31104       | GCC 11.2.0     |
+|       | macOS              | Windows              | Linux (Ubuntu) | Linux (Void) |
+|-------|--------------------|----------------------|----------------|--------------|
+| Boost | 1.74.0             | 1.74.0               | 1.74.0         | 1.90.0       |
+| LLVM  | 13.0.0             | 13.0.0               | 13.0.0         | 21.1.7       |
+| CMake | 3.21.1             | 3.19.2               | 3.22.2         | 4.2.2        |
+| IDE   | CLion 2021.3.3     | Visual Studio 17.1.0 | CLion 2021.3.3 | NVIM         |
+| CXX   | Apple Clang 13.0.0 | CL 19.31.31104       | GCC 11.2.0     | GCC 14.2.1   |
 
 ## Prerequisites
 
